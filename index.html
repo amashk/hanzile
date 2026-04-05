@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hanzile — Daily Chinese Character Game</title>
     <meta name="description" content="Guess the daily Chinese character in 6 attempts. Each guess reveals the stroke overlap between your guess and the target." />
+    <link rel="icon" type="image/png" href="/hanzile_logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet" />
@@ -12,8 +13,8 @@
   <body>
     <div id="app">
       <header>
-        <h1>汉字le</h1>
-        <p class="subtitle">Guess the daily Chinese character</p>
+        <img src="/hanzile_full_logo.png" alt="Hanzile" id="logo" />
+        <p class="subtitle">Hanzile: Guess the daily Chinese character</p>
       </header>
 
       <main>
@@ -41,8 +42,8 @@
             spellcheck="false"
             aria-label="Enter a Chinese character"
           />
-          <button id="submit-btn" type="button">Guess</button>
         </div>
+        <button id="submit-btn" type="button">Guess</button>
       </main>
 
       <footer id="footer">

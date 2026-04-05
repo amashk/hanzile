@@ -47,17 +47,17 @@ header {
   padding-bottom: 0.75rem;
 }
 
-header h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--accent);
+#logo {
+  height: 120px;
+  width: auto;
+  display: block;
+  margin: 0 auto 0rem;
 }
 
 .subtitle {
   font-size: 0.85rem;
   color: var(--subtle);
-  margin-top: 0.2rem;
+  margin-top: -2.5rem;
 }
 
 main {
@@ -181,13 +181,11 @@ main {
 
 /* ---- Input area ---- */
 #input-area {
-  display: flex;
-  gap: 0.5rem;
   width: 100%;
 }
 
 #char-input {
-  flex: 1;
+  width: 100%;
   padding: 0.6rem 0.75rem;
   font-size: 1.4rem;
   font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
@@ -210,6 +208,8 @@ main {
 }
 
 #submit-btn {
+  display: block;
+  width: 100%;
   padding: 0.6rem 1.25rem;
   font-size: 0.95rem;
   font-weight: 700;
@@ -219,7 +219,6 @@ main {
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s;
-  white-space: nowrap;
 }
 
 #submit-btn:hover:not(:disabled) {
