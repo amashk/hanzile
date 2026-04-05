@@ -1,0 +1,347 @@
+/* ---- Custom properties ---- */
+:root {
+  --bg: #fafaf8;
+  --fg: #1a1a1a;
+  --subtle: #666;
+  --border: #ddd;
+  --accent: #c0392b;
+  --accent-hover: #a93226;
+  --canvas-bg: #f0ede8;
+  --reveal-color: #1a1a1a;
+  --tile-bg: #fff;
+  --tile-border: #ccc;
+  --success-bg: #d4edda;
+  --success-fg: #155724;
+  --failure-bg: #f8d7da;
+  --failure-fg: #721c24;
+  --error-bg: #fff3cd;
+  --error-fg: #856404;
+}
+
+/* ---- Reset ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Noto Sans SC", "Microsoft YaHei", "SimSun", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+/* ---- Layout ---- */
+#app {
+  width: 100%;
+  max-width: 420px;
+  padding: 1rem 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+header {
+  text-align: center;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 0.75rem;
+}
+
+header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--subtle);
+  margin-top: 0.2rem;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* ---- Canvas ---- */
+#canvas-area {
+  width: 300px;
+  height: 300px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  background: var(--canvas-bg);
+}
+
+#display-canvas {
+  display: block;
+  width: 300px;
+  height: 300px;
+}
+
+/* ---- Attempts counter ---- */
+#attempts-row {
+  font-size: 0.85rem;
+  color: var(--subtle);
+  align-self: flex-end;
+  padding-right: 0.25rem;
+}
+
+#attempts {
+  font-weight: 700;
+  color: var(--fg);
+}
+
+/* ---- Guess list ---- */
+#guess-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+
+.guess-tile {
+  width: 48px;
+  height: 56px;
+  border: 2px solid var(--tile-border);
+  border-radius: 6px;
+  background: var(--tile-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  gap: 1px;
+}
+
+.guess-tile.empty {
+  opacity: 0.4;
+}
+
+.guess-tile.current {
+  border-color: var(--accent);
+  opacity: 0.6;
+  font-size: 1.1rem;
+  color: var(--subtle);
+}
+
+.guess-tile.filled {
+  background: hsl(var(--overlap-hue, 0), 60%, 92%);
+  border-color: hsl(var(--overlap-hue, 0), 50%, 70%);
+}
+
+.guess-tile.correct {
+  background: #d4edda;
+  border-color: #28a745;
+}
+
+.tile-char {
+  font-size: 1.3rem;
+  line-height: 1;
+  font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+}
+
+.tile-pct {
+  font-size: 0.6rem;
+  color: var(--subtle);
+}
+
+/* ---- Message ---- */
+.message {
+  width: 100%;
+  min-height: 1.5rem;
+  text-align: center;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+}
+
+.message.success {
+  background: var(--success-bg);
+  color: var(--success-fg);
+  padding: 0.6rem 0.75rem;
+}
+
+.message.failure {
+  background: var(--failure-bg);
+  color: var(--failure-fg);
+  padding: 0.6rem 0.75rem;
+}
+
+.message.error {
+  background: var(--error-bg);
+  color: var(--error-fg);
+  padding: 0.6rem 0.75rem;
+}
+
+/* ---- Input area ---- */
+#input-area {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+#char-input {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  font-size: 1.4rem;
+  font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: var(--tile-bg);
+  color: var(--fg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+#char-input:focus {
+  border-color: var(--accent);
+}
+
+#char-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#submit-btn {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+#submit-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+#submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Overlap popover ---- */
+#overlap-popover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 4px;
+  background: var(--tile-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 100;
+}
+
+#overlap-popover.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+#popover-canvas {
+  display: block;
+  width: 150px;
+  height: 150px;
+  border-radius: 4px;
+}
+
+/* Legend for diff mode */
+#overlap-popover.diff-legend::after {
+  content: "■ both  ■ target  ■ guess";
+  display: block;
+  font-size: 0.55rem;
+  margin-top: 3px;
+  text-align: center;
+  color: var(--subtle);
+  pointer-events: none;
+}
+
+/* ---- Dev panel ---- */
+#dev-panel {
+  width: 100%;
+  font-size: 0.8rem;
+  border: 1px dashed #aaa;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+#dev-panel summary {
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  background: #f5f5f5;
+  user-select: none;
+}
+
+.dev-controls {
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.dev-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+#dev-char-input {
+  width: 60px;
+  padding: 0.3rem 0.5rem;
+  font-size: 1.1rem;
+  font-family: "Noto Sans SC", sans-serif;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+#dev-panel button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+#dev-panel button:hover {
+  background: #eee;
+}
+
+#dev-target-label {
+  color: #888;
+  font-style: italic;
+}
+
+/* ---- Footer ---- */
+#footer {
+  padding: 1rem 1rem 2rem;
+  text-align: center;
+}
+
+#footer-kofi {
+  display: flex;
+  justify-content: center;
+}
+
+/* ---- Mobile tweaks ---- */
+@media (max-width: 440px) {
+  #canvas-area, #display-canvas {
+    width: 280px;
+    height: 280px;
+  }
+}

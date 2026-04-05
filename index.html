@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hanzile — Daily Chinese Character Game</title>
+    <meta name="description" content="Guess the daily Chinese character in 6 attempts. Each guess reveals the stroke overlap between your guess and the target." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>汉字le</h1>
+        <p class="subtitle">Guess the daily Chinese character</p>
+      </header>
+
+      <main>
+        <div id="canvas-area">
+          <canvas id="display-canvas" width="300" height="300" aria-label="Character reveal canvas"></canvas>
+        </div>
+
+        <div id="attempts-row">
+          <span id="attempts">0 / 6</span> attempts
+        </div>
+
+        <div id="guess-list" role="list" aria-label="Guesses"></div>
+
+        <div id="message" class="message" role="status" aria-live="polite"></div>
+
+        <div id="input-area">
+          <input
+            id="char-input"
+            type="text"
+            maxlength="20"
+            placeholder="Type a character…"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="none"
+            spellcheck="false"
+            aria-label="Enter a Chinese character"
+          />
+          <button id="submit-btn" type="button">Guess</button>
+        </div>
+      </main>
+
+      <footer id="footer">
+        <div id="footer-kofi"></div>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
