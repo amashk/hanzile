@@ -245,6 +245,34 @@ export function renderSingleOverlap(
   ctx.putImageData(imageData, 0, 0);
 }
 
+/**
+ * Render a single character onto a display canvas at its natural size,
+ * scaled to fit. Used for instruction diagrams.
+ */
+export function renderCharToDisplayCanvas(
+  char: string,
+  outCanvas: HTMLCanvasElement,
+  color = "#1a1a1a"
+): void {
+  const ctx = outCanvas.getContext("2d")!;
+  const W = outCanvas.width;
+  const H = outCanvas.height;
+
+  const bg =
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--canvas-bg")
+      .trim() || "#f0ede8";
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const fontSize = Math.round(W * 0.78);
+  ctx.fillStyle = color;
+  ctx.font = `${fontSize}px "Noto Sans SC", "Microsoft YaHei", "SimSun", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(char, W / 2, H / 2);
+}
+
 /** Animate newly revealed pixels onto the canvas with a brush-stroke sweep. */
 export function animateReveal(
   displayCanvas: HTMLCanvasElement,

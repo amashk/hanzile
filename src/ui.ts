@@ -7,10 +7,10 @@ import {
   getCumulativeMask,
   getTargetImageData,
 } from "./game";
-import { renderToCanvas, animateReveal, renderSingleOverlap, renderCharDiff, renderCharToImageData, computeFuzzyIoU } from "./canvas";
+import { renderToCanvas, animateReveal, renderSingleOverlap, renderCharDiff, renderCharToImageData, renderCharToDisplayCanvas, computeFuzzyIoU } from "./canvas";
 import { getDailyCharacter, getTodayKey } from "./daily";
 import { CHARACTERS } from "./characters";
-import { loadState, saveState } from "./storage";
+import { loadState, saveState, hasSeenInstructions, markInstructionsSeen } from "./storage";
 
 let state: GameState;
 let isAnimating = false;
@@ -37,6 +37,69 @@ const guessList = document.getElementById("guess-list") as HTMLElement;
 const messageEl = document.getElementById("message") as HTMLElement;
 const attemptsEl = document.getElementById("attempts") as HTMLElement;
 
+// ---- Instructions modal ----
+
+const instructionsModal = document.getElementById("instructions-modal") as HTMLElement;
+const instructionsClose = document.getElementById("instructions-close") as HTMLButtonElement;
+const instructionsPlayBtn = document.getElementById("instructions-play-btn") as HTMLButtonElement;
+const instructionsBackdrop = document.getElementById("instructions-backdrop") as HTMLElement;
+const helpBtn = document.getElementById("help-btn") as HTMLButtonElement;
+
+function renderInstructionsDiagram(): void {
+  const GUESS = "人";
+  const TARGET = "大";
+
+  const canvasGuess = document.getElementById("instr-canvas-guess") as HTMLCanvasElement;
+  const canvasTarget = document.getElementById("instr-canvas-target") as HTMLCanvasElement;
+  const canvasDiff = document.getElementById("instr-canvas-diff") as HTMLCanvasElement;
+
+  // Panel 1: guess character in normal ink
+  renderCharToDisplayCanvas(GUESS, canvasGuess);
+
+  // Panel 2: target character in muted colour (as if "hidden")
+  renderCharToDisplayCanvas(TARGET, canvasTarget, "#aaa");
+
+  // Panel 3: diff overlay using existing renderCharDiff
+  // renderCharDiff works at 300×300; canvasDiff is 150×150 — match canvas size
+  const savedW = canvasDiff.width;
+  const savedH = canvasDiff.height;
+  canvasDiff.width = 300;
+  canvasDiff.height = 300;
+  const targetData = renderCharToImageData(TARGET);
+  renderCharDiff(targetData, GUESS, canvasDiff);
+  // Restore display size (CSS handles visual scaling)
+  canvasDiff.width = savedW;
+  canvasDiff.height = savedH;
+  // Re-draw at native canvas size by downscaling
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = 300;
+  tempCanvas.height = 300;
+  renderCharDiff(targetData, GUESS, tempCanvas);
+  const ctx = canvasDiff.getContext("2d")!;
+  ctx.drawImage(tempCanvas, 0, 0, savedW, savedH);
+}
+
+function openInstructions(): void {
+  instructionsModal.hidden = false;
+  renderInstructionsDiagram();
+  instructionsClose.focus();
+}
+
+function closeInstructions(): void {
+  instructionsModal.hidden = true;
+  markInstructionsSeen();
+  if (state.status === "playing") inputEl.focus();
+}
+
+instructionsClose.addEventListener("click", closeInstructions);
+instructionsPlayBtn.addEventListener("click", closeInstructions);
+instructionsBackdrop.addEventListener("click", closeInstructions);
+helpBtn.addEventListener("click", openInstructions);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !instructionsModal.hidden) closeInstructions();
+});
+
 export function init(): void {
   const todayKey = getTodayKey();
   const savedState = loadState(todayKey);
@@ -56,7 +119,12 @@ export function init(): void {
 
   initGame(state);
   render();
-  if (state.status === "playing") inputEl.focus();
+
+  if (!hasSeenInstructions()) {
+    openInstructions();
+  } else if (state.status === "playing") {
+    inputEl.focus();
+  }
 
   submitBtn.addEventListener("click", handleSubmit);
   inputEl.addEventListener("keydown", (e) => {

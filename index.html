@@ -15,7 +15,70 @@
       <header>
         <img src="/hanzile_full_logo.png" alt="Hanzile" id="logo" />
         <p class="subtitle">Hanzile: Guess the daily Chinese character</p>
+        <button id="help-btn" aria-label="How to play">?</button>
       </header>
+
+      <!-- Instructions modal -->
+      <div id="instructions-modal" role="dialog" aria-modal="true" aria-label="How to play" hidden>
+        <div id="instructions-backdrop"></div>
+        <div id="instructions-panel">
+          <button id="instructions-close" aria-label="Close">&times;</button>
+          <h2>How to Play</h2>
+
+          <p>Guess the hidden Chinese character in <strong>6 attempts</strong>.</p>
+
+          <h3>Making a guess</h3>
+          <p>Type any Chinese character using your keyboard's IME and press <strong>Guess</strong>. Each guess reveals the strokes your character shares with the hidden one.</p>
+
+          <h3>Reading the overlap %</h3>
+          <p>After each guess you see a coloured tile showing the character and its <em>pixel overlap</em> with the target — how much of the stroke area matches.</p>
+
+          <div class="instr-tiles">
+            <div class="instr-tile" style="--overlap-hue:0">
+              <span class="tile-char">木</span><span class="tile-pct">5%</span>
+              <span class="instr-label">Low</span>
+            </div>
+            <div class="instr-tile" style="--overlap-hue:60">
+              <span class="tile-char">本</span><span class="tile-pct">50%</span>
+              <span class="instr-label">Medium</span>
+            </div>
+            <div class="instr-tile" style="--overlap-hue:120">
+              <span class="tile-char">末</span><span class="tile-pct">89%</span>
+              <span class="instr-label">High</span>
+            </div>
+          </div>
+
+          <h3>The canvas</h3>
+          <p>The large canvas shows a running reveal — every pixel your guesses share with the hidden character lights up. Use the colours below to understand each guess:</p>
+
+          <div class="instr-diagram-wrap">
+            <div class="instr-diagram-cell">
+              <canvas id="instr-canvas-guess" width="150" height="150"></canvas>
+              <span>Your guess (人)</span>
+            </div>
+            <div class="instr-diagram-cell">
+              <canvas id="instr-canvas-target" width="150" height="150"></canvas>
+              <span>Hidden target (大)</span>
+            </div>
+            <div class="instr-diagram-cell">
+              <canvas id="instr-canvas-diff" width="150" height="150"></canvas>
+              <span>Overlap view</span>
+            </div>
+          </div>
+          <div class="instr-legend">
+            <span class="legend-both">■ Both</span>
+            <span class="legend-target">■ Target only</span>
+            <span class="legend-guess">■ Guess only</span>
+          </div>
+
+          <h3>Tip</h3>
+          <p>Hover over a tile to see exactly where that character overlapped with the target.</p>
+
+          <p class="instr-fine">A new character every day. Good luck!</p>
+
+          <button id="instructions-play-btn">Play</button>
+        </div>
+      </div>
 
       <main>
         <div id="canvas-area">

@@ -326,6 +326,203 @@ main {
   font-style: italic;
 }
 
+/* ---- Help button ---- */
+#help-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--tile-bg);
+  color: var(--fg);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+#help-btn:hover {
+  border-color: var(--accent);
+  background: var(--canvas-bg);
+}
+
+header {
+  position: relative;
+}
+
+/* ---- Instructions modal ---- */
+#instructions-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#instructions-modal[hidden] {
+  display: none;
+}
+
+#instructions-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+#instructions-panel {
+  position: relative;
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 1.5rem 1.5rem 1.25rem;
+  max-width: 380px;
+  width: calc(100% - 2rem);
+  max-height: 90dvh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+#instructions-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--subtle);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+#instructions-close:hover {
+  background: var(--canvas-bg);
+  color: var(--fg);
+}
+
+#instructions-panel h2 {
+  font-size: 1.3rem;
+  text-align: center;
+  margin-bottom: 0.25rem;
+}
+
+#instructions-panel h3 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--subtle);
+  margin-top: 0.25rem;
+}
+
+#instructions-panel p {
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+/* Example tiles inside modal */
+.instr-tiles {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.instr-tile {
+  width: 64px;
+  border: 2px solid hsl(var(--overlap-hue, 0), 50%, 70%);
+  border-radius: 6px;
+  background: hsl(var(--overlap-hue, 0), 60%, 92%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.3rem 0;
+  gap: 2px;
+}
+
+.instr-tile .tile-char {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.instr-tile .tile-pct {
+  font-size: 0.6rem;
+  color: var(--subtle);
+}
+
+.instr-label {
+  font-size: 0.6rem;
+  color: var(--subtle);
+  margin-top: 2px;
+}
+
+/* Diagram panels */
+.instr-diagram-wrap {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.instr-diagram-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  color: var(--subtle);
+}
+
+.instr-diagram-cell canvas {
+  width: 90px;
+  height: 90px;
+  border-radius: 6px;
+  background: var(--canvas-bg);
+  display: block;
+}
+
+/* Colour legend */
+.instr-legend {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  font-size: 0.68rem;
+  color: var(--subtle);
+}
+
+.legend-both   { color: #1a1a1a; }
+.legend-target { color: #2563eb; }
+.legend-guess  { color: #dc2626; }
+
+.instr-fine {
+  font-size: 0.8rem;
+  color: var(--subtle);
+  text-align: center;
+}
+
+#instructions-play-btn {
+  display: block;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 0.25rem;
+}
+
+#instructions-play-btn:hover {
+  background: var(--accent-hover);
+}
+
 /* ---- Footer ---- */
 #footer {
   padding: 1rem 1rem 2rem;
