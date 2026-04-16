@@ -14,6 +14,12 @@ export function getDailyCharacter(): Character {
   return CHARACTERS[index];
 }
 
+export function getPuzzleNumber(): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((today.getTime() - EPOCH.getTime()) / 86400000) + 1;
+}
+
 export function getTodayKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

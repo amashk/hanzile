@@ -173,6 +173,105 @@ main {
   padding: 0.6rem 0.75rem;
 }
 
+@keyframes share-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px #facc15, 0 2px 6px rgba(0, 0, 0, 0.2); }
+  50%       { box-shadow: 0 0 0 5px #fde68a, 0 2px 6px rgba(0, 0, 0, 0.2); }
+}
+
+#share-btn {
+  display: block;
+  margin: 0.6rem auto 0;
+  padding: 0.5rem 1.6rem;
+  border: 2px solid #facc15;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  animation: share-pulse 1.4s ease-in-out infinite;
+}
+
+#share-btn:hover {
+  background: #fefce8;
+}
+
+/* Share modal */
+#share-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#share-modal[hidden] {
+  display: none;
+}
+
+#share-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+#share-panel {
+  position: relative;
+  background: var(--bg, #fff);
+  color: var(--fg, #111);
+  border-radius: 12px;
+  padding: 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  min-width: 220px;
+}
+
+#share-preview {
+  font-family: inherit;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  text-align: center;
+  margin: 0;
+  white-space: pre;
+}
+
+#share-copy-btn {
+  padding: 0.45rem 1.4rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent, #c0392b);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+}
+
+#share-copy-btn:hover {
+  filter: brightness(1.1);
+}
+
+#share-close-btn {
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  color: var(--fg, #111);
+  font-size: 0.9rem;
+  cursor: pointer;
+  opacity: 0.75;
+  padding: 0.3rem 1rem;
+  width: 100%;
+}
+
+#share-close-btn:hover {
+  opacity: 1;
+}
+
 .message.error {
   background: var(--error-bg);
   color: var(--error-fg);
@@ -412,16 +511,18 @@ main {
 }
 
 #draw-clear-btn {
-  font-size: 0.85rem;
-  color: var(--subtle);
+  font-size: 0.9rem;
+  color: var(--fg);
   background: none;
-  border: none;
+  border: 1px solid currentColor;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 0.3rem 0;
+  padding: 0.3rem 0.9rem;
+  opacity: 0.65;
 }
 
 #draw-clear-btn:hover {
-  color: var(--fg);
+  opacity: 1;
 }
 
 #draw-submit-btn {

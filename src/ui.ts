@@ -8,7 +8,7 @@ import {
   getTargetImageData,
 } from "./game";
 import { renderToCanvas, animateReveal, renderSingleOverlap, renderCharDiff, renderCharToImageData, renderCharToDisplayCanvas, computeFuzzyIoU } from "./canvas";
-import { getDailyCharacter, getTodayKey } from "./daily";
+import { getDailyCharacter, getTodayKey, getPuzzleNumber } from "./daily";
 import { CHARACTERS } from "./characters";
 import { loadState, saveState, hasSeenInstructions, markInstructionsSeen } from "./storage";
 
@@ -470,15 +470,75 @@ function updateAttemptsCounter(): void {
   attemptsEl.textContent = `${state.guesses.length} / ${MAX_GUESSES}`;
 }
 
+function buildShareText(): string {
+  const n = getPuzzleNumber();
+  const guessCount = state.status === "won" ? `${state.guesses.length}` : "X";
+  const emojis = state.guesses.map((g) => {
+    const pct = g.overlapPct;
+    if (pct >= 80) return "🟩";
+    if (pct >= 50) return "🟨";
+    if (pct >= 20) return "🟧";
+    return "🟥";
+  });
+  const header = state.status === "won"
+    ? `I solved Hanzile #${n} in ${guessCount} attempt${guessCount === "1" ? "" : "s"}!`
+    : `Aya! I didn't solve Hanzile #${n}! Can you?`;
+  return `${header}\n${emojis.join("")}\nhanzile.atone.fun`;
+}
+
+// ---- Share modal ----
+
+const shareModal = document.createElement("div");
+shareModal.id = "share-modal";
+shareModal.hidden = true;
+shareModal.innerHTML = `
+  <div id="share-backdrop"></div>
+  <div id="share-panel">
+    <pre id="share-preview"></pre>
+    <button id="share-copy-btn" type="button">Copy</button>
+    <button id="share-close-btn" type="button">Close</button>
+  </div>
+`;
+document.body.appendChild(shareModal);
+
+shareModal.querySelector("#share-backdrop")!.addEventListener("click", closeShareModal);
+shareModal.querySelector("#share-close-btn")!.addEventListener("click", closeShareModal);
+shareModal.querySelector("#share-copy-btn")!.addEventListener("click", async () => {
+  const text = (document.getElementById("share-preview") as HTMLElement).textContent ?? "";
+  const copyBtn = document.getElementById("share-copy-btn") as HTMLButtonElement;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    prompt("Copy your results:", text);
+  }
+  copyBtn.textContent = "Copied!";
+  setTimeout(() => { copyBtn.textContent = "Copy"; }, 2000);
+});
+
+function openShareModal(): void {
+  (document.getElementById("share-preview") as HTMLElement).textContent = buildShareText();
+  shareModal.hidden = false;
+}
+
+function closeShareModal(): void {
+  shareModal.hidden = true;
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !shareModal.hidden) closeShareModal();
+});
+
 function renderMessage(): void {
   if (state.status === "won") {
     const c = getDailyCharacter();
-    messageEl.innerHTML = `<strong>🎉 Correct!</strong> The character is <strong>${c.char}</strong> (${c.pinyin}) — ${c.meaning}`;
+    messageEl.innerHTML = `<strong>🎉 Correct!</strong> The character is <strong>${c.char}</strong> (${c.pinyin}) — ${c.meaning}<br><button id="share-btn" type="button">Share!</button>`;
     messageEl.className = "message success";
+    document.getElementById("share-btn")!.addEventListener("click", openShareModal);
   } else if (state.status === "lost") {
     const c = getDailyCharacter();
-    messageEl.innerHTML = `<strong>Game over.</strong> The answer was <strong>${c.char}</strong> (${c.pinyin}) — ${c.meaning}`;
+    messageEl.innerHTML = `<strong>Game over.</strong> The answer was <strong>${c.char}</strong> (${c.pinyin}) — ${c.meaning}<br><button id="share-btn" type="button">Share!</button>`;
     messageEl.className = "message failure";
+    document.getElementById("share-btn")!.addEventListener("click", openShareModal);
   }
 }
 
