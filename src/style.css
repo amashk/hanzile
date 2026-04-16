@@ -326,6 +326,170 @@ main {
   font-style: italic;
 }
 
+/* ---- Input mode toggle ---- */
+#input-mode-toggle {
+  display: flex;
+  width: 100%;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  background: var(--tile-bg);
+  color: var(--subtle);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.mode-btn:not(.active):hover {
+  background: var(--canvas-bg);
+  color: var(--fg);
+}
+
+/* ---- Draw area ---- */
+#draw-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+#draw-area[hidden] {
+  display: none;
+}
+
+#draw-canvas-wrap {
+  position: relative;
+  width: 100%;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+  touch-action: none;
+}
+
+#draw-canvas {
+  display: block;
+  width: 100%;
+  height: 200px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* Light guide grid — faint cross-hair lines */
+#draw-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px),
+    linear-gradient(to right, rgba(0,0,0,0.04) 50%, transparent 50%),
+    linear-gradient(to bottom, rgba(0,0,0,0.04) 50%, transparent 50%);
+  background-size: 33.33% 50%, 33.33% 50%, 100% 100%, 100% 100%;
+}
+
+#draw-controls {
+  display: flex;
+  justify-content: space-between;
+}
+
+#draw-clear-btn {
+  font-size: 0.85rem;
+  color: var(--subtle);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem 0;
+}
+
+#draw-clear-btn:hover {
+  color: var(--fg);
+}
+
+#draw-submit-btn {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+#draw-submit-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+#draw-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#draw-result {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+#draw-result[hidden] {
+  display: none;
+}
+
+#draw-result.draw-options {
+  background: var(--canvas-bg);
+  color: var(--fg);
+}
+
+#draw-result.draw-error {
+  background: var(--error-bg);
+  color: var(--error-fg);
+}
+
+.draw-options-label {
+  font-size: 0.78rem;
+  color: var(--subtle);
+  margin-bottom: 0.4rem;
+}
+
+.draw-options-row {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.draw-option-btn {
+  font-size: 1.5rem;
+  font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  line-height: 1;
+  padding: 0.3rem 0.6rem;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: var(--tile-bg);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.draw-option-btn:hover {
+  border-color: var(--accent);
+  background: var(--canvas-bg);
+}
+
 /* ---- Help button ---- */
 #help-btn {
   position: absolute;

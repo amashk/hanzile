@@ -37,6 +37,109 @@ const guessList = document.getElementById("guess-list") as HTMLElement;
 const messageEl = document.getElementById("message") as HTMLElement;
 const attemptsEl = document.getElementById("attempts") as HTMLElement;
 
+// ---- Draw mode ----
+
+const modeTypBtn = document.getElementById("mode-type-btn") as HTMLButtonElement;
+const modeDrawBtn = document.getElementById("mode-draw-btn") as HTMLButtonElement;
+const drawArea = document.getElementById("draw-area") as HTMLElement;
+const inputArea = document.getElementById("input-area") as HTMLElement;
+const drawCanvas = document.getElementById("draw-canvas") as HTMLCanvasElement;
+const drawClearBtn = document.getElementById("draw-clear-btn") as HTMLButtonElement;
+const drawSubmitBtn = document.getElementById("draw-submit-btn") as HTMLButtonElement;
+const drawResultEl = document.getElementById("draw-result") as HTMLElement;
+
+let hwCanvas: any = null; // handwriting.js instance
+
+function initHandwriting(): void {
+  if (hwCanvas) return; // already initialized
+
+  hwCanvas = new (window as any).handwriting.Canvas(drawCanvas);
+  hwCanvas.setOptions({ language: 'zh', numOfReturn: 5 });
+
+  hwCanvas.setCallBack((data: string[] | null, err: any) => {
+    drawSubmitBtn.disabled = false;
+    drawSubmitBtn.textContent = "Recognize";
+
+    if (err || !data || data.length === 0) {
+      showDrawResult("error", "Couldn't recognize — try again with cleaner strokes.");
+      return;
+    }
+
+    const options = data.slice(0, 5).filter(isCJK);
+    if (options.length === 0) {
+      showDrawResult("error", "No Chinese characters recognized. Try again.");
+      return;
+    }
+
+    showDrawOptions(options);
+  });
+}
+
+function showDrawResult(type: "error" | "options", text: string): void {
+  drawResultEl.className = type === "error" ? "draw-error" : "draw-options";
+  drawResultEl.textContent = text;
+  drawResultEl.hidden = false;
+}
+
+function showDrawOptions(options: string[]): void {
+  drawResultEl.className = "draw-options";
+  drawResultEl.hidden = false;
+  drawResultEl.innerHTML = `
+    <div class="draw-options-label">Tap to guess:</div>
+    <div class="draw-options-row">
+      ${options.map(ch => `<button class="draw-option-btn" data-char="${ch}">${ch}</button>`).join("")}
+    </div>
+  `;
+  drawResultEl.querySelectorAll<HTMLButtonElement>(".draw-option-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const char = btn.dataset.char!;
+      submitDrawnChar(char);
+    });
+  });
+}
+
+function submitDrawnChar(char: string): void {
+  // Feed the recognized char into the existing type input and trigger submit
+  inputEl.value = char;
+  drawResultEl.hidden = true;
+  if (hwCanvas) hwCanvas.erase();
+  handleSubmit();
+}
+
+function setDrawMode(enabled: boolean): void {
+  modeTypBtn.classList.toggle("active", !enabled);
+  modeDrawBtn.classList.toggle("active", enabled);
+  modeTypBtn.setAttribute("aria-pressed", String(!enabled));
+  modeDrawBtn.setAttribute("aria-pressed", String(enabled));
+
+  inputArea.hidden = enabled;
+  submitBtn.hidden = enabled;
+  drawArea.hidden = !enabled;
+
+  if (enabled) {
+    initHandwriting();
+    drawResultEl.hidden = true;
+  } else {
+    inputEl.focus();
+  }
+}
+
+modeTypBtn.addEventListener("click", () => setDrawMode(false));
+modeDrawBtn.addEventListener("click", () => setDrawMode(true));
+
+drawClearBtn.addEventListener("click", () => {
+  if (hwCanvas) hwCanvas.erase();
+  drawResultEl.hidden = true;
+});
+
+drawSubmitBtn.addEventListener("click", () => {
+  if (!hwCanvas) return;
+  drawSubmitBtn.disabled = true;
+  drawSubmitBtn.textContent = "Recognizing…";
+  drawResultEl.hidden = true;
+  hwCanvas.recognize();
+});
+
 // ---- Instructions modal ----
 
 const instructionsModal = document.getElementById("instructions-modal") as HTMLElement;
@@ -209,6 +312,7 @@ function setInputEnabled(enabled: boolean): void {
   if (state.status !== "playing") return;
   inputEl.disabled = !enabled;
   submitBtn.disabled = !enabled;
+  drawSubmitBtn.disabled = !enabled;
 }
 
 function render(): void {
@@ -224,7 +328,10 @@ function render(): void {
   updateAttemptsCounter();
   renderMessage();
 
-  setInputEnabled(state.status === "playing");
+  const playing = state.status === "playing";
+  setInputEnabled(playing);
+  modeTypBtn.disabled = !playing;
+  modeDrawBtn.disabled = !playing;
 }
 
 function renderGuessList(): void {

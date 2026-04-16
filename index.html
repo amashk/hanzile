@@ -93,6 +93,11 @@
 
         <div id="message" class="message" role="status" aria-live="polite"></div>
 
+        <div id="input-mode-toggle" role="group" aria-label="Input method">
+          <button id="mode-type-btn" class="mode-btn active" aria-pressed="true">⌨ Type</button>
+          <button id="mode-draw-btn" class="mode-btn" aria-pressed="false">✍ Draw</button>
+        </div>
+
         <div id="input-area">
           <input
             id="char-input"
@@ -107,12 +112,30 @@
           />
         </div>
         <button id="submit-btn" type="button">Guess</button>
+
+        <div id="draw-area" hidden>
+          <div id="draw-canvas-wrap">
+            <canvas
+              id="draw-canvas"
+              width="300"
+              height="200"
+              aria-label="Draw a character here"
+            ></canvas>
+            <div id="draw-grid" aria-hidden="true"></div>
+          </div>
+          <div id="draw-controls">
+            <button id="draw-clear-btn" type="button">Clear</button>
+            <button id="draw-submit-btn" type="button">Recognize</button>
+          </div>
+          <div id="draw-result" hidden></div>
+        </div>
       </main>
 
       <footer id="footer">
         <div id="footer-kofi"></div>
       </footer>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/handwriting.js/handwriting.min.js"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
