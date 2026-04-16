@@ -207,6 +207,12 @@ main {
   cursor: not-allowed;
 }
 
+#char-input:read-only {
+  background: var(--canvas-bg);
+  cursor: default;
+  color: var(--fg);
+}
+
 #submit-btn {
   display: block;
   width: 100%;

@@ -42,19 +42,61 @@ const attemptsEl = document.getElementById("attempts") as HTMLElement;
 const modeTypBtn = document.getElementById("mode-type-btn") as HTMLButtonElement;
 const modeDrawBtn = document.getElementById("mode-draw-btn") as HTMLButtonElement;
 const drawArea = document.getElementById("draw-area") as HTMLElement;
-const inputArea = document.getElementById("input-area") as HTMLElement;
 const drawCanvas = document.getElementById("draw-canvas") as HTMLCanvasElement;
 const drawClearBtn = document.getElementById("draw-clear-btn") as HTMLButtonElement;
 const drawSubmitBtn = document.getElementById("draw-submit-btn") as HTMLButtonElement;
 const drawResultEl = document.getElementById("draw-result") as HTMLElement;
 
 let hwCanvas: any = null; // handwriting.js instance
+let autoRecognizeTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleAutoRecognize(): void {
+  if (autoRecognizeTimer) clearTimeout(autoRecognizeTimer);
+  autoRecognizeTimer = setTimeout(() => {
+    autoRecognizeTimer = null;
+    if (hwCanvas) {
+      drawSubmitBtn.disabled = true;
+      drawSubmitBtn.textContent = "Recognizing…";
+      drawResultEl.hidden = true;
+      hwCanvas.recognize();
+    }
+  }, 3000);
+}
+
+function cancelAutoRecognize(): void {
+  if (autoRecognizeTimer) {
+    clearTimeout(autoRecognizeTimer);
+    autoRecognizeTimer = null;
+  }
+}
+
+function syncDrawCanvasSize(): boolean {
+  // Use offsetWidth/Height — reliable after layout, unlike getBoundingClientRect on first show.
+  const w = drawCanvas.offsetWidth;
+  const h = drawCanvas.offsetHeight;
+  if (!w || !h) return false; // layout not ready yet
+  if (drawCanvas.width !== w || drawCanvas.height !== h) {
+    drawCanvas.width = w;
+    drawCanvas.height = h;
+    hwCanvas = null; // recreate — it caches canvas dimensions at init
+  }
+  return true;
+}
 
 function initHandwriting(): void {
-  if (hwCanvas) return; // already initialized
+  if (!(window as any).handwriting) {
+    showDrawResult("error", "Drawing library failed to load. Please refresh.");
+    return;
+  }
+  if (!syncDrawCanvasSize()) return; // not laid out yet — setDrawMode will retry via rAF
+  if (hwCanvas) return;
 
   hwCanvas = new (window as any).handwriting.Canvas(drawCanvas);
   hwCanvas.setOptions({ language: 'zh', numOfReturn: 5 });
+
+  // Start the 3-second auto-recognize timer after each stroke ends.
+  drawCanvas.addEventListener("mouseup", scheduleAutoRecognize);
+  drawCanvas.addEventListener("touchend", scheduleAutoRecognize);
 
   hwCanvas.setCallBack((data: string[] | null, err: any) => {
     drawSubmitBtn.disabled = false;
@@ -70,6 +112,9 @@ function initHandwriting(): void {
       showDrawResult("error", "No Chinese characters recognized. Try again.");
       return;
     }
+
+    // Auto-fill the type input with the top result.
+    inputEl.value = options[0];
 
     showDrawOptions(options);
   });
@@ -112,14 +157,18 @@ function setDrawMode(enabled: boolean): void {
   modeTypBtn.setAttribute("aria-pressed", String(!enabled));
   modeDrawBtn.setAttribute("aria-pressed", String(enabled));
 
-  inputArea.hidden = enabled;
+  inputEl.readOnly = enabled;
   submitBtn.hidden = enabled;
   drawArea.hidden = !enabled;
 
   if (enabled) {
-    initHandwriting();
+    inputEl.value = "";
+    inputEl.placeholder = "Draw a character…";
     drawResultEl.hidden = true;
+    requestAnimationFrame(() => initHandwriting());
   } else {
+    cancelAutoRecognize();
+    inputEl.placeholder = "Type a character…";
     inputEl.focus();
   }
 }
@@ -127,9 +176,21 @@ function setDrawMode(enabled: boolean): void {
 modeTypBtn.addEventListener("click", () => setDrawMode(false));
 modeDrawBtn.addEventListener("click", () => setDrawMode(true));
 
+window.addEventListener("resize", () => {
+  if (!drawArea.hidden) {
+    requestAnimationFrame(() => {
+      syncDrawCanvasSize(); // nulls hwCanvas if size changed
+      initHandwriting();   // recreates it at the new size
+      drawResultEl.hidden = true;
+    });
+  }
+});
+
 drawClearBtn.addEventListener("click", () => {
+  cancelAutoRecognize();
   if (hwCanvas) hwCanvas.erase();
   drawResultEl.hidden = true;
+  inputEl.value = "";
 });
 
 drawSubmitBtn.addEventListener("click", () => {

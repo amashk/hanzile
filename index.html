@@ -25,44 +25,37 @@
           <button id="instructions-close" aria-label="Close">&times;</button>
           <h2>How to Play</h2>
 
-          <p>Guess the hidden Chinese character in <strong>6 attempts</strong>.</p>
+          <p>Guess the hidden Chinese character in <strong>6 attempts</strong>. Each guess reveals how much its strokes overlap with the target.</p>
 
-          <h3>Making a guess</h3>
-          <p>Type any Chinese character using your keyboard's IME and press <strong>Guess</strong>. Each guess reveals the strokes your character shares with the hidden one.</p>
-
-          <h3>Reading the overlap %</h3>
-          <p>After each guess you see a coloured tile showing the character and its <em>pixel overlap</em> with the target — how much of the stroke area matches.</p>
+          <h3>Overlap</h3>
+          <p>Each tile shows the stroke overlap with the target. Higher % = closer match.</p>
 
           <div class="instr-tiles">
             <div class="instr-tile" style="--overlap-hue:0">
               <span class="tile-char">木</span><span class="tile-pct">5%</span>
-              <span class="instr-label">Low</span>
             </div>
             <div class="instr-tile" style="--overlap-hue:60">
               <span class="tile-char">本</span><span class="tile-pct">50%</span>
-              <span class="instr-label">Medium</span>
             </div>
             <div class="instr-tile" style="--overlap-hue:120">
               <span class="tile-char">末</span><span class="tile-pct">89%</span>
-              <span class="instr-label">High</span>
             </div>
           </div>
 
-          <h3>The canvas</h3>
-          <p>The large canvas shows a running reveal — every pixel your guesses share with the hidden character lights up. Use the colours below to understand each guess:</p>
+          <p>The canvas reveals every pixel your guesses share with the hidden character. Hover a tile to see its individual overlap.</p>
 
           <div class="instr-diagram-wrap">
             <div class="instr-diagram-cell">
               <canvas id="instr-canvas-guess" width="150" height="150"></canvas>
-              <span>Your guess (人)</span>
+              <span>Guess (人)</span>
             </div>
             <div class="instr-diagram-cell">
               <canvas id="instr-canvas-target" width="150" height="150"></canvas>
-              <span>Hidden target (大)</span>
+              <span>Target (大)</span>
             </div>
             <div class="instr-diagram-cell">
               <canvas id="instr-canvas-diff" width="150" height="150"></canvas>
-              <span>Overlap view</span>
+              <span>Overlap</span>
             </div>
           </div>
           <div class="instr-legend">
@@ -71,10 +64,9 @@
             <span class="legend-guess">■ Guess only</span>
           </div>
 
-          <h3>Tip</h3>
-          <p>Hover over a tile to see exactly where that character overlapped with the target.</p>
-
-          <p class="instr-fine">A new character every day. Good luck!</p>
+          <h3>Input</h3>
+          <p><strong>⌨ Type</strong> — use your IME to enter a character.<br>
+          <strong>✍ Draw</strong> — handwrite with touch or mouse. Auto-recognizes after 3 seconds.</p>
 
           <button id="instructions-play-btn">Play</button>
         </div>
@@ -135,7 +127,8 @@
         <div id="footer-kofi"></div>
       </footer>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/handwriting.js/handwriting.min.js"></script>
+    <script src="/handwriting.js"></script>
+    <script src="/handwriting.canvas.js"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
