@@ -2,6 +2,11 @@ import {
   renderCharToImageData,
   computeOverlapMask,
   computeFuzzyIoU,
+  computeFuzzyDice,
+  computeTargetCoverage,
+  computeOriginalTargetCoverage,
+  computeOriginalGuessCoverage,
+  computeBalancedCoverageF1,
 } from "./canvas";
 
 export const MAX_GUESSES = 6;
@@ -10,6 +15,14 @@ export const DEFAULT_FUZZY_N = 2;
 export interface GuessResult {
   char: string;
   overlapPct: number;
+  scores?: {
+    dice: number;
+    iou: number;
+    coverage: number;
+    originalCoverage: number;
+    originalGuessCoverage: number;
+    balancedF1: number;
+  };
 }
 
 export interface GameState {
@@ -62,10 +75,24 @@ export function makeGuess(
     if (overlapMask[i]) _cumulativeMask[i] = 1;
   }
 
-  // Fuzzy IoU as the canonical similarity score
-  const overlapPct = computeFuzzyIoU(_targetImageData!, guessImageData, fuzzyN);
+  const isWon = char === state.target;
+  const rawDice = computeFuzzyDice(_targetImageData!, guessImageData, fuzzyN);
+  const rawIoU = computeFuzzyIoU(_targetImageData!, guessImageData, fuzzyN);
+  const rawCoverage = computeTargetCoverage(_targetImageData!, guessImageData, fuzzyN);
+  const rawOriginalCoverage = computeOriginalTargetCoverage(_targetImageData!, guessImageData, fuzzyN);
+  const rawOriginalGuessCoverage = computeOriginalGuessCoverage(_targetImageData!, guessImageData, fuzzyN);
+  const rawBalancedF1 = computeBalancedCoverageF1(_targetImageData!, guessImageData, fuzzyN);
+  const scores = {
+    dice: isWon ? 100 : Math.min(99, rawDice),
+    iou: isWon ? 100 : Math.min(99, rawIoU),
+    coverage: isWon ? 100 : Math.min(99, rawCoverage),
+    originalCoverage: isWon ? 100 : Math.min(99, rawOriginalCoverage),
+    originalGuessCoverage: isWon ? 100 : Math.min(99, rawOriginalGuessCoverage),
+    balancedF1: isWon ? 100 : Math.min(99, rawBalancedF1),
+  };
+  const overlapPct = scores.balancedF1;
 
-  const guessResult: GuessResult = { char, overlapPct };
+  const guessResult: GuessResult = { char, overlapPct, scores };
   const newGuesses = [...state.guesses, guessResult];
 
   let maskStr = "";
@@ -74,7 +101,6 @@ export function makeGuess(
   }
   const maskBase64 = btoa(maskStr);
 
-  const isWon = char === state.target;
   const isLost = !isWon && newGuesses.length >= MAX_GUESSES;
 
   const newState: GameState = {

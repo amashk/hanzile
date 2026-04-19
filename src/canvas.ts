@@ -2,6 +2,13 @@ const CANVAS_SIZE = 300;
 const FONT_SIZE = 240;
 const FONT = `${FONT_SIZE}px "Noto Sans SC", "Microsoft YaHei", "SimSun", sans-serif`;
 
+interface Bounds {
+  minRow: number;
+  maxRow: number;
+  minCol: number;
+  maxCol: number;
+}
+
 function createOffscreen(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = CANVAS_SIZE;
@@ -18,7 +25,7 @@ export function renderCharToImageData(char: string): ImageData {
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(char, CANVAS_SIZE / 2, CANVAS_SIZE / 2);
-  return ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  return normalizeInkPosition(ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE));
 }
 
 export function computeOverlapMask(
@@ -47,6 +54,60 @@ export function extractMask(imageData: ImageData): Uint8Array {
   return mask;
 }
 
+function getMaskBounds(mask: Uint8Array): Bounds | null {
+  let minRow = CANVAS_SIZE;
+  let maxRow = -1;
+  let minCol = CANVAS_SIZE;
+  let maxCol = -1;
+
+  for (let row = 0; row < CANVAS_SIZE; row++) {
+    for (let col = 0; col < CANVAS_SIZE; col++) {
+      if (!mask[row * CANVAS_SIZE + col]) continue;
+      if (row < minRow) minRow = row;
+      if (row > maxRow) maxRow = row;
+      if (col < minCol) minCol = col;
+      if (col > maxCol) maxCol = col;
+    }
+  }
+
+  if (maxRow === -1) return null;
+  return { minRow, maxRow, minCol, maxCol };
+}
+
+function normalizeInkPosition(imageData: ImageData): ImageData {
+  const mask = extractMask(imageData);
+  const bounds = getMaskBounds(mask);
+  if (!bounds) return imageData;
+
+  const centerRow = (bounds.minRow + bounds.maxRow) / 2;
+  const centerCol = (bounds.minCol + bounds.maxCol) / 2;
+  const targetCenter = (CANVAS_SIZE - 1) / 2;
+  const shiftRow = Math.round(targetCenter - centerRow);
+  const shiftCol = Math.round(targetCenter - centerCol);
+
+  if (shiftRow === 0 && shiftCol === 0) return imageData;
+
+  const normalized = new ImageData(CANVAS_SIZE, CANVAS_SIZE);
+  for (let row = 0; row < CANVAS_SIZE; row++) {
+    const srcRow = row - shiftRow;
+    if (srcRow < 0 || srcRow >= CANVAS_SIZE) continue;
+
+    for (let col = 0; col < CANVAS_SIZE; col++) {
+      const srcCol = col - shiftCol;
+      if (srcCol < 0 || srcCol >= CANVAS_SIZE) continue;
+
+      const destBase = (row * CANVAS_SIZE + col) * 4;
+      const srcBase = (srcRow * CANVAS_SIZE + srcCol) * 4;
+      normalized.data[destBase] = imageData.data[srcBase];
+      normalized.data[destBase + 1] = imageData.data[srcBase + 1];
+      normalized.data[destBase + 2] = imageData.data[srcBase + 2];
+      normalized.data[destBase + 3] = imageData.data[srcBase + 3];
+    }
+  }
+
+  return normalized;
+}
+
 /**
  * Dilate a binary mask by n pixels (Chebyshev / square neighbourhood).
  * Every pixel within n steps of an ink pixel becomes ink.
@@ -71,27 +132,129 @@ export function dilateMask(mask: Uint8Array, n: number): Uint8Array {
   return out;
 }
 
+function computeFuzzyCounts(
+  targetData: ImageData,
+  guessData: ImageData,
+  n: number
+): { inter: number; tCount: number; gCount: number } {
+  const tMask = dilateMask(extractMask(targetData), n);
+  const gMask = dilateMask(extractMask(guessData), n);
+  let inter = 0;
+  let tCount = 0;
+  let gCount = 0;
+  for (let i = 0; i < CANVAS_SIZE * CANVAS_SIZE; i++) {
+    const t = tMask[i];
+    const g = gMask[i];
+    if (t && g) inter++;
+    if (t) tCount++;
+    if (g) gCount++;
+  }
+  return { inter, tCount, gCount };
+}
+
 /**
- * Fuzzy IoU: dilate both masks by n before computing intersection/union.
- * Numerator = dilated_target ∩ dilated_guess.
- * Denominator = dilated_target ∪ dilated_guess.
+ * Fuzzy overlap score: dilate both masks by n before computing a Dice-style
+ * coefficient. This is less punitive than IoU for near-matches while still
+ * preserving a true 100% when the masks are identical.
+ */
+export function computeFuzzyDice(
+  targetData: ImageData,
+  guessData: ImageData,
+  n: number
+): number {
+  const { inter, tCount, gCount } = computeFuzzyCounts(targetData, guessData, n);
+  const denom = tCount + gCount;
+  return denom > 0 ? Math.round(((2 * inter) / denom) * 100) : 0;
+}
+
+/**
+ * Legacy fuzzy IoU: intersection over union after the same dilation step.
  */
 export function computeFuzzyIoU(
   targetData: ImageData,
   guessData: ImageData,
   n: number
 ): number {
-  const tMask = dilateMask(extractMask(targetData), n);
-  const gMask = dilateMask(extractMask(guessData), n);
-  let inter = 0;
-  let union = 0;
-  for (let i = 0; i < CANVAS_SIZE * CANVAS_SIZE; i++) {
-    const t = tMask[i];
-    const g = gMask[i];
-    if (t && g) inter++;
-    if (t || g) union++;
-  }
+  const { inter, tCount, gCount } = computeFuzzyCounts(targetData, guessData, n);
+  const union = tCount + gCount - inter;
   return union > 0 ? Math.round((inter / union) * 100) : 0;
+}
+
+/**
+ * Target coverage: how much of the target's ink is covered by the guess.
+ * This is asymmetric and ignores extra guess ink outside the target.
+ */
+export function computeTargetCoverage(
+  targetData: ImageData,
+  guessData: ImageData,
+  n: number
+): number {
+  const { inter, tCount } = computeFuzzyCounts(targetData, guessData, n);
+  return tCount > 0 ? Math.round((inter / tCount) * 100) : 0;
+}
+
+/**
+ * Original-target coverage: how much of the target's original ink is covered
+ * by a tolerated/dilated version of the guess. This is asymmetric and keeps
+ * the denominator tight, so near-matches score higher than standard coverage.
+ */
+export function computeOriginalTargetCoverage(
+  targetData: ImageData,
+  guessData: ImageData,
+  n: number
+): number {
+  const tMask = extractMask(targetData);
+  const gMask = dilateMask(extractMask(guessData), n);
+  let covered = 0;
+  let tCount = 0;
+
+  for (let i = 0; i < CANVAS_SIZE * CANVAS_SIZE; i++) {
+    if (!tMask[i]) continue;
+    tCount++;
+    if (gMask[i]) covered++;
+  }
+
+  return tCount > 0 ? Math.round((covered / tCount) * 100) : 0;
+}
+
+/**
+ * Original-guess coverage: how much of the guess's original ink is covered by
+ * a tolerated/dilated version of the target. This acts like a precision term
+ * paired with computeOriginalTargetCoverage's recall term.
+ */
+export function computeOriginalGuessCoverage(
+  targetData: ImageData,
+  guessData: ImageData,
+  n: number
+): number {
+  const tMask = dilateMask(extractMask(targetData), n);
+  const gMask = extractMask(guessData);
+  let covered = 0;
+  let gCount = 0;
+
+  for (let i = 0; i < CANVAS_SIZE * CANVAS_SIZE; i++) {
+    if (!gMask[i]) continue;
+    gCount++;
+    if (tMask[i]) covered++;
+  }
+
+  return gCount > 0 ? Math.round((covered / gCount) * 100) : 0;
+}
+
+/**
+ * Balanced tolerant F1: harmonic mean of target recall and guess precision,
+ * both measured on original ink against a tolerated counterpart.
+ */
+export function computeBalancedCoverageF1(
+  targetData: ImageData,
+  guessData: ImageData,
+  n: number
+): number {
+  const recall = computeOriginalTargetCoverage(targetData, guessData, n);
+  const precision = computeOriginalGuessCoverage(targetData, guessData, n);
+
+  if (recall === 0 || precision === 0) return 0;
+  return Math.round((2 * recall * precision) / (recall + precision));
 }
 
 export function countPixels(imageData: ImageData): number {

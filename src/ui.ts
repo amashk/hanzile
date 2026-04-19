@@ -7,7 +7,20 @@ import {
   getCumulativeMask,
   getTargetImageData,
 } from "./game";
-import { renderToCanvas, animateReveal, renderSingleOverlap, renderCharDiff, renderCharToImageData, renderCharToDisplayCanvas, computeFuzzyIoU } from "./canvas";
+import {
+  renderToCanvas,
+  animateReveal,
+  renderSingleOverlap,
+  renderCharDiff,
+  renderCharToImageData,
+  renderCharToDisplayCanvas,
+  computeFuzzyIoU,
+  computeFuzzyDice,
+  computeTargetCoverage,
+  computeOriginalTargetCoverage,
+  computeOriginalGuessCoverage,
+  computeBalancedCoverageF1,
+} from "./canvas";
 import { getDailyCharacter, getTodayKey, getPuzzleNumber } from "./daily";
 import { CHARACTERS } from "./characters";
 import { loadState, saveState, hasSeenInstructions, markInstructionsSeen } from "./storage";
@@ -548,10 +561,27 @@ function recalculateFuzzyScores(): void {
   const targetData = getTargetImageData();
   if (!targetData || state.guesses.length === 0) return;
 
-  state.guesses = state.guesses.map((g) => ({
-    ...g,
-    overlapPct: computeFuzzyIoU(targetData, renderCharToImageData(g.char), fuzzyN),
-  }));
+  state.guesses = state.guesses.map((g) => {
+    const guessData = renderCharToImageData(g.char);
+    const isWon = g.char === state.target;
+    const scores = {
+      dice: isWon ? 100 : Math.min(99, computeFuzzyDice(targetData, guessData, fuzzyN)),
+      iou: isWon ? 100 : Math.min(99, computeFuzzyIoU(targetData, guessData, fuzzyN)),
+      coverage: isWon ? 100 : Math.min(99, computeTargetCoverage(targetData, guessData, fuzzyN)),
+      originalCoverage:
+        isWon ? 100 : Math.min(99, computeOriginalTargetCoverage(targetData, guessData, fuzzyN)),
+      originalGuessCoverage:
+        isWon ? 100 : Math.min(99, computeOriginalGuessCoverage(targetData, guessData, fuzzyN)),
+      balancedF1:
+        isWon ? 100 : Math.min(99, computeBalancedCoverageF1(targetData, guessData, fuzzyN)),
+    };
+
+    return {
+      ...g,
+      scores,
+      overlapPct: scores.balancedF1,
+    };
+  });
 
   renderGuessList();
 }
@@ -627,6 +657,8 @@ function resetWithChar(char: string): void {
   saveState(todayKey, state);
   initGame(state);
   isAnimating = false;
+  messageEl.textContent = "";
+  messageEl.className = "message";
   render();
   updateDevLabel();
 }
