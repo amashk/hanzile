@@ -68,7 +68,16 @@ main {
 }
 
 /* ---- Canvas ---- */
+#canvas-stack {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+}
+
 #canvas-area {
+  position: relative;
   width: 300px;
   height: 300px;
   border-radius: 8px;
@@ -284,22 +293,37 @@ main {
   width: 100%;
 }
 
-#char-input {
+#input-shell {
   width: 100%;
-  padding: 0.6rem 0.75rem;
-  font-size: 1.4rem;
-  font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
-  text-align: center;
   border: 2px solid var(--border);
   border-radius: 6px;
   background: var(--tile-bg);
-  color: var(--fg);
-  outline: none;
   transition: border-color 0.15s;
+  overflow: hidden;
 }
 
-#char-input:focus {
+#input-shell:focus-within {
   border-color: var(--accent);
+}
+
+#input-row {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  gap: 0.35rem;
+  padding: 0 0.35rem;
+}
+
+#char-input {
+  width: 100%;
+  padding: 0.6rem 0.4rem;
+  font-size: 1.4rem;
+  font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  text-align: center;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  outline: none;
 }
 
 #char-input:disabled {
@@ -311,6 +335,10 @@ main {
   background: var(--canvas-bg);
   cursor: default;
   color: var(--fg);
+}
+
+#app.draw-mode #char-input {
+  display: none;
 }
 
 #submit-btn {
@@ -465,10 +493,7 @@ main {
 
 /* ---- Draw area ---- */
 #draw-area {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  display: none;
 }
 
 #draw-area[hidden] {
@@ -476,21 +501,22 @@ main {
 }
 
 #draw-canvas-wrap {
-  position: relative;
-  width: 100%;
-  border: 2px solid var(--border);
-  border-radius: 8px;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  background: #fff;
+  background: transparent;
   touch-action: none;
+  display: none;
+  z-index: 2;
 }
 
 #draw-canvas {
   display: block;
   width: 100%;
-  height: 200px;
+  height: 100%;
   touch-action: none;
   cursor: crosshair;
+  background: rgba(255, 255, 255, 0.22);
 }
 
 /* Light guide grid — faint cross-hair lines */
@@ -506,20 +532,24 @@ main {
   background-size: 33.33% 50%, 33.33% 50%, 100% 100%, 100% 100%;
 }
 
-#draw-controls {
-  display: flex;
-  justify-content: space-between;
+#app.draw-mode #draw-canvas-wrap {
+  display: block;
 }
 
 #draw-clear-btn {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  z-index: 3;
   font-size: 0.9rem;
   color: var(--fg);
-  background: none;
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid currentColor;
   border-radius: 6px;
   cursor: pointer;
-  padding: 0.3rem 0.9rem;
-  opacity: 0.65;
+  padding: 0.35rem 0.65rem;
+  opacity: 0.72;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 
 #draw-clear-btn:hover {
@@ -527,8 +557,8 @@ main {
 }
 
 #draw-submit-btn {
-  padding: 0.5rem 1.25rem;
-  font-size: 0.9rem;
+  padding: 0.42rem 0.8rem;
+  font-size: 0.82rem;
   font-weight: 700;
   background: var(--accent);
   color: #fff;
@@ -548,10 +578,11 @@ main {
 }
 
 #draw-result {
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
   font-size: 0.9rem;
-  text-align: center;
+  text-align: left;
 }
 
 #draw-result[hidden] {
@@ -559,26 +590,21 @@ main {
 }
 
 #draw-result.draw-options {
-  background: var(--canvas-bg);
+  background: transparent;
   color: var(--fg);
 }
 
 #draw-result.draw-error {
-  background: var(--error-bg);
+  background: transparent;
   color: var(--error-fg);
-}
-
-.draw-options-label {
-  font-size: 0.78rem;
-  color: var(--subtle);
-  margin-bottom: 0.4rem;
+  padding-left: 0.25rem;
 }
 
 .draw-options-row {
   display: flex;
   gap: 0.4rem;
-  justify-content: center;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .draw-option-btn {
@@ -593,7 +619,9 @@ main {
   transition: border-color 0.12s, background 0.12s;
 }
 
-.draw-option-btn:hover {
+.draw-option-btn.active,
+.draw-option-btn:hover,
+.draw-option-btn:focus-visible {
   border-color: var(--accent);
   background: var(--canvas-bg);
 }

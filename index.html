@@ -73,8 +73,20 @@
       </div>
 
       <main>
-        <div id="canvas-area">
-          <canvas id="display-canvas" width="300" height="300" aria-label="Character reveal canvas"></canvas>
+        <div id="canvas-stack">
+          <div id="canvas-area">
+            <canvas id="display-canvas" width="300" height="300" aria-label="Character reveal canvas"></canvas>
+            <div id="draw-canvas-wrap">
+              <canvas
+                id="draw-canvas"
+                width="300"
+                height="300"
+                aria-label="Draw a character here"
+              ></canvas>
+              <div id="draw-grid" aria-hidden="true"></div>
+            </div>
+            <button id="draw-clear-btn" type="button" hidden>Clear</button>
+          </div>
         </div>
 
         <div id="attempts-row">
@@ -91,36 +103,27 @@
         </div>
 
         <div id="input-area">
-          <input
-            id="char-input"
-            type="text"
-            maxlength="20"
-            placeholder="Type a character…"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="none"
-            spellcheck="false"
-            aria-label="Enter a Chinese character"
-          />
+          <div id="input-shell">
+            <div id="input-row">
+              <input
+                id="char-input"
+                type="text"
+                maxlength="20"
+                placeholder="Type a character…"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="none"
+                spellcheck="false"
+                aria-label="Enter a Chinese character"
+              />
+              <div id="draw-result" hidden></div>
+              <button id="draw-submit-btn" type="button" hidden>Recognize</button>
+            </div>
+          </div>
         </div>
         <button id="submit-btn" type="button">Guess</button>
 
-        <div id="draw-area" hidden>
-          <div id="draw-canvas-wrap">
-            <canvas
-              id="draw-canvas"
-              width="300"
-              height="200"
-              aria-label="Draw a character here"
-            ></canvas>
-            <div id="draw-grid" aria-hidden="true"></div>
-          </div>
-          <div id="draw-controls">
-            <button id="draw-clear-btn" type="button">Clear</button>
-            <button id="draw-submit-btn" type="button">Recognize</button>
-          </div>
-          <div id="draw-result" hidden></div>
-        </div>
+        <div id="draw-area" hidden></div>
       </main>
 
       <footer id="footer">

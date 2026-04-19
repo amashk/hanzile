@@ -54,11 +54,13 @@ const attemptsEl = document.getElementById("attempts") as HTMLElement;
 
 const modeTypBtn = document.getElementById("mode-type-btn") as HTMLButtonElement;
 const modeDrawBtn = document.getElementById("mode-draw-btn") as HTMLButtonElement;
-const drawArea = document.getElementById("draw-area") as HTMLElement;
 const drawCanvas = document.getElementById("draw-canvas") as HTMLCanvasElement;
 const drawClearBtn = document.getElementById("draw-clear-btn") as HTMLButtonElement;
 const drawSubmitBtn = document.getElementById("draw-submit-btn") as HTMLButtonElement;
 const drawResultEl = document.getElementById("draw-result") as HTMLElement;
+const appEl = document.getElementById("app") as HTMLElement;
+
+const DRAW_LINE_WIDTH = 7;
 
 let hwCanvas: any = null; // handwriting.js instance
 let autoRecognizeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -106,6 +108,8 @@ function initHandwriting(): void {
 
   hwCanvas = new (window as any).handwriting.Canvas(drawCanvas);
   hwCanvas.setOptions({ language: 'zh', numOfReturn: 5 });
+  hwCanvas.setLineWidth(DRAW_LINE_WIDTH);
+  hwCanvas.ctx.strokeStyle = "#2563eb";
 
   // Start the 3-second auto-recognize timer after each stroke ends.
   drawCanvas.addEventListener("mouseup", scheduleAutoRecognize);
@@ -120,14 +124,14 @@ function initHandwriting(): void {
       return;
     }
 
-    const options = data.slice(0, 5).filter(isCJK);
+    const options = data.filter((candidate) => {
+      const cjkChars = [...candidate].filter(isCJK);
+      return cjkChars.length === 1 && cjkChars[0] === candidate;
+    }).slice(0, 5);
     if (options.length === 0) {
       showDrawResult("error", "No Chinese characters recognized. Try again.");
       return;
     }
-
-    // Auto-fill the type input with the top result.
-    inputEl.value = options[0];
 
     showDrawOptions(options);
   });
@@ -143,12 +147,26 @@ function showDrawOptions(options: string[]): void {
   drawResultEl.className = "draw-options";
   drawResultEl.hidden = false;
   drawResultEl.innerHTML = `
-    <div class="draw-options-label">Tap to guess:</div>
     <div class="draw-options-row">
       ${options.map(ch => `<button class="draw-option-btn" data-char="${ch}">${ch}</button>`).join("")}
     </div>
   `;
-  drawResultEl.querySelectorAll<HTMLButtonElement>(".draw-option-btn").forEach(btn => {
+  const buttons = Array.from(
+    drawResultEl.querySelectorAll<HTMLButtonElement>(".draw-option-btn")
+  );
+  const setActiveButton = (activeBtn: HTMLButtonElement | null) => {
+    buttons.forEach((btn, index) => {
+      btn.classList.toggle("active", btn === activeBtn || (!activeBtn && index === 0));
+    });
+  };
+
+  setActiveButton(null);
+
+  buttons.forEach(btn => {
+    btn.addEventListener("mouseenter", () => setActiveButton(btn));
+    btn.addEventListener("mouseleave", () => setActiveButton(null));
+    btn.addEventListener("focus", () => setActiveButton(btn));
+    btn.addEventListener("blur", () => setActiveButton(null));
     btn.addEventListener("click", () => {
       const char = btn.dataset.char!;
       submitDrawnChar(char);
@@ -159,6 +177,7 @@ function showDrawOptions(options: string[]): void {
 function submitDrawnChar(char: string): void {
   // Feed the recognized char into the existing type input and trigger submit
   inputEl.value = char;
+  drawResultEl.innerHTML = "";
   drawResultEl.hidden = true;
   if (hwCanvas) hwCanvas.erase();
   handleSubmit();
@@ -169,19 +188,24 @@ function setDrawMode(enabled: boolean): void {
   modeDrawBtn.classList.toggle("active", enabled);
   modeTypBtn.setAttribute("aria-pressed", String(!enabled));
   modeDrawBtn.setAttribute("aria-pressed", String(enabled));
+  appEl.classList.toggle("draw-mode", enabled);
 
   inputEl.readOnly = enabled;
   submitBtn.hidden = enabled;
-  drawArea.hidden = !enabled;
+  drawSubmitBtn.hidden = !enabled;
+  drawClearBtn.hidden = !enabled;
 
   if (enabled) {
     inputEl.value = "";
     inputEl.placeholder = "Draw a character…";
+    drawResultEl.innerHTML = "";
     drawResultEl.hidden = true;
     requestAnimationFrame(() => initHandwriting());
   } else {
     cancelAutoRecognize();
     inputEl.placeholder = "Type a character…";
+    drawResultEl.innerHTML = "";
+    drawResultEl.hidden = true;
     inputEl.focus();
   }
 }
@@ -190,7 +214,7 @@ modeTypBtn.addEventListener("click", () => setDrawMode(false));
 modeDrawBtn.addEventListener("click", () => setDrawMode(true));
 
 window.addEventListener("resize", () => {
-  if (!drawArea.hidden) {
+  if (appEl.classList.contains("draw-mode")) {
     requestAnimationFrame(() => {
       syncDrawCanvasSize(); // nulls hwCanvas if size changed
       initHandwriting();   // recreates it at the new size
@@ -202,6 +226,7 @@ window.addEventListener("resize", () => {
 drawClearBtn.addEventListener("click", () => {
   cancelAutoRecognize();
   if (hwCanvas) hwCanvas.erase();
+  drawResultEl.innerHTML = "";
   drawResultEl.hidden = true;
   inputEl.value = "";
 });
@@ -210,6 +235,7 @@ drawSubmitBtn.addEventListener("click", () => {
   if (!hwCanvas) return;
   drawSubmitBtn.disabled = true;
   drawSubmitBtn.textContent = "Recognizing…";
+  drawResultEl.innerHTML = "";
   drawResultEl.hidden = true;
   hwCanvas.recognize();
 });
@@ -315,6 +341,14 @@ export function init(): void {
 
 function handleSubmit(): void {
   if (state.status !== "playing" || isAnimating) return;
+
+  if (appEl.classList.contains("draw-mode")) {
+    const firstOption = drawResultEl.querySelector<HTMLButtonElement>(".draw-option-btn");
+    if (firstOption?.dataset.char) {
+      submitDrawnChar(firstOption.dataset.char);
+      return;
+    }
+  }
 
   const raw = inputEl.value.trim();
   if (!raw) return;
