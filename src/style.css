@@ -140,8 +140,8 @@ main {
 }
 
 .guess-tile.filled {
-  background: hsl(var(--overlap-hue, 0), 60%, 92%);
-  border-color: hsl(var(--overlap-hue, 0), 50%, 70%);
+  background: var(--overlap-bg, hsl(var(--overlap-hue, 0), 60%, 92%));
+  border-color: var(--overlap-border, hsl(var(--overlap-hue, 0), 50%, 70%));
 }
 
 .guess-tile.correct {
@@ -735,9 +735,9 @@ header {
 
 .instr-tile {
   width: 64px;
-  border: 2px solid hsl(var(--overlap-hue, 0), 50%, 70%);
+  border: 2px solid var(--overlap-border, hsl(var(--overlap-hue, 0), 50%, 70%));
   border-radius: 6px;
-  background: hsl(var(--overlap-hue, 0), 60%, 92%);
+  background: var(--overlap-bg, hsl(var(--overlap-hue, 0), 60%, 92%));
   display: flex;
   flex-direction: column;
   align-items: center;

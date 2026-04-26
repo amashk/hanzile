@@ -470,8 +470,9 @@ function createGuessTile(g: GuessResult): HTMLElement {
   tile.className = "guess-tile filled";
   if (g.char === state.target) tile.classList.add("correct");
 
-  const hue = Math.round(pct * 1.2);
-  tile.style.setProperty("--overlap-hue", String(hue));
+  const colors = getOverlapColors(pct);
+  tile.style.setProperty("--overlap-bg", colors.background);
+  tile.style.setProperty("--overlap-border", colors.border);
   tile.innerHTML = `<span class="tile-char">${g.char}</span><span class="tile-pct">${pct}%</span>`;
 
   tile.addEventListener("mouseenter", (e) => {
@@ -517,16 +518,58 @@ function updateAttemptsCounter(): void {
   attemptsEl.textContent = `${state.guesses.length} / ${MAX_GUESSES}`;
 }
 
+type RgbColor = { r: number; g: number; b: number };
+
+// Apple-style system hues are a closer visual match to common emoji square colors.
+const EMOJI_RED: RgbColor = { r: 255, g: 69, b: 58 };
+const EMOJI_ORANGE: RgbColor = { r: 255, g: 159, b: 10 };
+const EMOJI_YELLOW: RgbColor = { r: 255, g: 214, b: 10 };
+const EMOJI_GREEN: RgbColor = { r: 48, g: 209, b: 88 };
+const WHITE: RgbColor = { r: 255, g: 255, b: 255 };
+
+function interpolateColor(start: RgbColor, end: RgbColor, t: number): RgbColor {
+  const clamped = Math.max(0, Math.min(1, t));
+  return {
+    r: Math.round(start.r + (end.r - start.r) * clamped),
+    g: Math.round(start.g + (end.g - start.g) * clamped),
+    b: Math.round(start.b + (end.b - start.b) * clamped),
+  };
+}
+
+function mixWithWhite(color: RgbColor, amount: number): RgbColor {
+  return interpolateColor(color, WHITE, amount);
+}
+
+function formatRgb(color: RgbColor): string {
+  return `rgb(${color.r}, ${color.g}, ${color.b})`;
+}
+
+function getEmojiLikeBaseColor(pct: number): RgbColor {
+  if (pct <= 25) return interpolateColor(EMOJI_RED, EMOJI_ORANGE, pct / 25);
+  if (pct <= 50) return interpolateColor(EMOJI_ORANGE, EMOJI_YELLOW, (pct - 25) / 25);
+  return interpolateColor(EMOJI_YELLOW, EMOJI_GREEN, (pct - 50) / 50);
+}
+
+function getOverlapColors(pct: number): { background: string; border: string } {
+  const base = getEmojiLikeBaseColor(pct);
+  return {
+    background: formatRgb(mixWithWhite(base, 0.78)),
+    border: formatRgb(mixWithWhite(base, 0.42)),
+  };
+}
+
+function getShareEmojiForOverlap(pct: number): string {
+  if (pct >= 100) return "👑";
+  if (pct >= 70) return "🟩";
+  if (pct >= 50) return "🟨";
+  if (pct >= 25) return "🟧";
+  return "🟥";
+}
+
 function buildShareText(): string {
   const n = getPuzzleNumber();
   const guessCount = state.status === "won" ? `${state.guesses.length}` : "X";
-  const emojis = state.guesses.map((g) => {
-    const pct = g.overlapPct;
-    if (pct >= 80) return "🟩";
-    if (pct >= 50) return "🟨";
-    if (pct >= 20) return "🟧";
-    return "🟥";
-  });
+  const emojis = state.guesses.map((g) => getShareEmojiForOverlap(g.overlapPct));
   const header = state.status === "won"
     ? `I solved Hanzile #${n} in ${guessCount} attempt${guessCount === "1" ? "" : "s"}!`
     : `Aya! I didn't solve Hanzile #${n}! Can you?`;
