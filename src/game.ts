@@ -7,6 +7,9 @@ import {
   computeOriginalTargetCoverage,
   computeOriginalGuessCoverage,
   computeBalancedCoverageF1,
+  clipMaskToQuadrant,
+  clipImageDataToQuadrant,
+  type Quadrant,
 } from "./canvas";
 import type { Level } from "./levels";
 
@@ -16,6 +19,8 @@ export const DEFAULT_FUZZY_N = 2;
 export interface GuessResult {
   char: string;
   overlapPct: number;
+  /** Hard mode: the only quarter this guess revealed. */
+  quadrant?: Quadrant;
   scores?: {
     dice: number;
     iou: number;
@@ -33,6 +38,8 @@ export interface GameState {
   guesses: GuessResult[];
   status: "playing" | "won" | "lost";
   maskBase64: string;
+  /** Hard mode: each guess reveals only one chosen quarter of the board. */
+  hard?: boolean;
 }
 
 let _targetImageData: ImageData | null = null;
@@ -60,17 +67,45 @@ export function getTargetImageData(): ImageData | null {
   return _targetImageData;
 }
 
+export type GuessScores = NonNullable<GuessResult["scores"]>;
+
+/**
+ * Similarity scores for a guess, capped at 99 unless it's the answer. In hard
+ * mode only the chosen quarter of both characters is compared.
+ */
+export function scoreGuess(
+  targetData: ImageData,
+  guessData: ImageData,
+  isWon: boolean,
+  fuzzyN: number,
+  quadrant?: Quadrant
+): GuessScores {
+  const t = quadrant === undefined ? targetData : clipImageDataToQuadrant(targetData, quadrant);
+  const g = quadrant === undefined ? guessData : clipImageDataToQuadrant(guessData, quadrant);
+  const cap = (raw: number) => (isWon ? 100 : Math.min(99, raw));
+  return {
+    dice: cap(computeFuzzyDice(t, g, fuzzyN)),
+    iou: cap(computeFuzzyIoU(t, g, fuzzyN)),
+    coverage: cap(computeTargetCoverage(t, g, fuzzyN)),
+    originalCoverage: cap(computeOriginalTargetCoverage(t, g, fuzzyN)),
+    originalGuessCoverage: cap(computeOriginalGuessCoverage(t, g, fuzzyN)),
+    balancedF1: cap(computeBalancedCoverageF1(t, g, fuzzyN)),
+  };
+}
+
 export function makeGuess(
   state: GameState,
   char: string,
-  fuzzyN: number = DEFAULT_FUZZY_N
+  fuzzyN: number = DEFAULT_FUZZY_N,
+  quadrant?: Quadrant
 ): { state: GameState; overlapPct: number } {
   if (state.status !== "playing") return { state, overlapPct: 0 };
   if (state.guesses.some((g) => g.char === char))
     return { state, overlapPct: 0 };
 
   const guessImageData = renderCharToImageData(char);
-  const overlapMask = computeOverlapMask(_targetImageData!, guessImageData);
+  let overlapMask = computeOverlapMask(_targetImageData!, guessImageData);
+  if (quadrant !== undefined) overlapMask = clipMaskToQuadrant(overlapMask, quadrant);
 
   // Accumulate visual mask
   for (let i = 0; i < _cumulativeMask.length; i++) {
@@ -78,23 +113,10 @@ export function makeGuess(
   }
 
   const isWon = char === state.target;
-  const rawDice = computeFuzzyDice(_targetImageData!, guessImageData, fuzzyN);
-  const rawIoU = computeFuzzyIoU(_targetImageData!, guessImageData, fuzzyN);
-  const rawCoverage = computeTargetCoverage(_targetImageData!, guessImageData, fuzzyN);
-  const rawOriginalCoverage = computeOriginalTargetCoverage(_targetImageData!, guessImageData, fuzzyN);
-  const rawOriginalGuessCoverage = computeOriginalGuessCoverage(_targetImageData!, guessImageData, fuzzyN);
-  const rawBalancedF1 = computeBalancedCoverageF1(_targetImageData!, guessImageData, fuzzyN);
-  const scores = {
-    dice: isWon ? 100 : Math.min(99, rawDice),
-    iou: isWon ? 100 : Math.min(99, rawIoU),
-    coverage: isWon ? 100 : Math.min(99, rawCoverage),
-    originalCoverage: isWon ? 100 : Math.min(99, rawOriginalCoverage),
-    originalGuessCoverage: isWon ? 100 : Math.min(99, rawOriginalGuessCoverage),
-    balancedF1: isWon ? 100 : Math.min(99, rawBalancedF1),
-  };
+  const scores = scoreGuess(_targetImageData!, guessImageData, isWon, fuzzyN, quadrant);
   const overlapPct = scores.balancedF1;
 
-  const guessResult: GuessResult = { char, overlapPct, scores };
+  const guessResult: GuessResult = { char, overlapPct, scores, quadrant };
   const newGuesses = [...state.guesses, guessResult];
 
   let maskStr = "";

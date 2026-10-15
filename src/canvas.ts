@@ -44,6 +44,34 @@ export function renderCharToImageData(char: string): ImageData {
   return normalizeInkPosition(ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE));
 }
 
+/** Board quarters for hard mode: 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right. */
+export type Quadrant = 0 | 1 | 2 | 3;
+
+function quadrantOfPixel(i: number): Quadrant {
+  const half = CANVAS_SIZE / 2;
+  const row = (i / CANVAS_SIZE) | 0;
+  const col = i % CANVAS_SIZE;
+  return (((row >= half ? 2 : 0) + (col >= half ? 1 : 0)) as Quadrant);
+}
+
+/** Copy of `mask` with everything outside quadrant `q` cleared. */
+export function clipMaskToQuadrant(mask: Uint8Array, q: Quadrant): Uint8Array {
+  const out = new Uint8Array(mask.length);
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i] && quadrantOfPixel(i) === q) out[i] = 1;
+  }
+  return out;
+}
+
+/** Copy of `imageData` with ink outside quadrant `q` made transparent. */
+export function clipImageDataToQuadrant(imageData: ImageData, q: Quadrant): ImageData {
+  const out = new ImageData(new Uint8ClampedArray(imageData.data), CANVAS_SIZE, CANVAS_SIZE);
+  for (let i = 0; i < CANVAS_SIZE * CANVAS_SIZE; i++) {
+    if (quadrantOfPixel(i) !== q) out.data[i * 4 + 3] = 0;
+  }
+  return out;
+}
+
 export function computeOverlapMask(
   targetData: ImageData,
   guessData: ImageData
@@ -393,7 +421,8 @@ export function renderCharDiff(
 export function renderSingleOverlap(
   targetData: ImageData,
   guessChar: string,
-  outCanvas: HTMLCanvasElement
+  outCanvas: HTMLCanvasElement,
+  quadrant?: Quadrant
 ): void {
   const guessData = renderCharToImageData(guessChar);
   const ctx = outCanvas.getContext("2d")!;
@@ -413,7 +442,7 @@ export function renderSingleOverlap(
 
   for (let i = 0; i < CANVAS_SIZE * CANVAS_SIZE; i++) {
     const alpha = i * 4 + 3;
-    if (td[alpha] > 64 && gd[alpha] > 64) {
+    if (td[alpha] > 64 && gd[alpha] > 64 && (quadrant === undefined || quadrantOfPixel(i) === quadrant)) {
       const base = i * 4;
       imageData.data[base] = td[base];
       imageData.data[base + 1] = td[base + 1];

@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- interactive-widget: on Android the keyboard resizes the page (instead of panning a
+         smaller visible area over it), so the board can be pinned to the top while typing. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
     <title>Hanzile — Daily Chinese Character Game</title>
     <meta name="description" content="Guess the daily Chinese character in 6 attempts. Each guess reveals the stroke overlap between your guess and the target." />
     <link rel="icon" type="image/png" href="/hanzile_logo.png" />
@@ -17,6 +19,11 @@
         <img src="/hanzile_full_logo.png" alt="Hanzile" id="logo" />
         <p class="subtitle">Hanzile: Guess the daily Chinese character</p>
         <button id="help-btn" aria-label="How to play">?</button>
+        <label id="hard-toggle">
+          <input id="hard-toggle-input" type="checkbox" role="switch" />
+          <span class="switch-track" aria-hidden="true"></span>
+          <span>Hard</span>
+        </label>
       </header>
 
       <nav id="level-picker" aria-label="Level"></nav>
@@ -72,6 +79,9 @@
           <strong>Apprentice</strong> — HSK 1–2 · <strong>Scholar</strong> — HSK 3–5 · <strong>Master</strong> — HSK 6–9</p>
           <p>You can guess <strong>any</strong> character. A character shown <span style="color:var(--off-level-fg);border:1px dashed var(--off-level-fg);padding:0 0.25em;border-radius:3px">gray and dashed</span> while you type or draw isn't on your level's list, so it can't be the answer — but its overlap still counts as a hint.</p>
 
+          <h3>Hard mode</h3>
+          <p>Each guess reveals only <strong>one quarter</strong> of the board: pick it with the four <strong>Guess</strong> buttons. The overlap % compares only that quarter.</p>
+
           <h3>Input</h3>
           <p><strong>⌨ Type</strong> — use your IME to enter a character.<br>
           <strong>✍ Draw</strong> — handwrite with touch or mouse. Auto-recognizes after 3 seconds.</p>
@@ -97,19 +107,12 @@
           </div>
         </div>
 
-        <div id="attempts-row">
-          <span id="attempts">0 / 6</span> attempts
-        </div>
-
         <div id="guess-list" role="list" aria-label="Guesses"></div>
 
         <div id="message" class="message" role="status" aria-live="polite"></div>
 
-        <div id="input-mode-toggle" role="group" aria-label="Input method">
-          <button id="mode-type-btn" class="mode-btn active" aria-pressed="true">⌨ Type</button>
-          <button id="mode-draw-btn" class="mode-btn" aria-pressed="false">✍ Draw</button>
-        </div>
-
+        <!-- One row: input method · input · Guess (or the 2×2 quarter buttons in hard mode) -->
+        <div id="guess-row">
         <div id="input-area">
           <div id="input-shell">
             <div id="input-row">
@@ -130,6 +133,12 @@
           </div>
         </div>
         <button id="submit-btn" type="button">Guess</button>
+        </div>
+
+        <div id="input-mode-toggle" role="group" aria-label="Input method">
+          <button id="mode-type-btn" class="mode-btn active" aria-pressed="true">⌨ Type</button>
+          <button id="mode-draw-btn" class="mode-btn" aria-pressed="false">✍ Draw</button>
+        </div>
 
         <div id="draw-area" hidden></div>
       </main>

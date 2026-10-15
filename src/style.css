@@ -112,6 +112,69 @@ header {
   opacity: 0.75;
 }
 
+/* ---- Hard mode switch ---- */
+/* Top-left of the header, mirroring the ? button */
+#hard-toggle {
+  position: absolute;
+  top: 0.75rem;
+  left: 1rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--subtle);
+  cursor: pointer;
+  user-select: none;
+}
+
+#hard-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.switch-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.15s;
+}
+
+.switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+
+#hard-toggle input:checked + .switch-track {
+  background: var(--accent);
+}
+
+#hard-toggle input:checked + .switch-track::after {
+  transform: translateX(14px);
+}
+
+#hard-toggle input:focus-visible + .switch-track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#hard-toggle:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+
 main {
   display: flex;
   flex-direction: column;
@@ -128,10 +191,11 @@ main {
   gap: 0;
 }
 
+/* --board-size is set from JS while the phone keyboard is open (board shrinks to fit). */
 #canvas-area {
   position: relative;
-  width: 300px;
-  height: 300px;
+  width: var(--board-size, 300px);
+  height: var(--board-size, 300px);
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
@@ -140,21 +204,91 @@ main {
 
 #display-canvas {
   display: block;
-  width: 300px;
-  height: 300px;
+  width: 100%;
+  height: 100%;
 }
 
-/* ---- Attempts counter ---- */
-#attempts-row {
-  font-size: 0.85rem;
-  color: var(--subtle);
-  align-self: flex-end;
-  padding-right: 0.25rem;
+/* ---- Error banner over the board ---- */
+#error-toast {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 4;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  background: var(--error-bg);
+  color: var(--error-fg);
+  font-size: 0.82rem;
+  line-height: 1.3;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
 }
 
-#attempts {
+#error-toast[hidden] {
+  display: none;
+}
+
+/* ---- Hard mode quadrants ---- */
+#quadrant-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  display: grid;
+  grid-template: 1fr 1fr / 1fr 1fr;
+  background-image:
+    linear-gradient(to right, transparent calc(50% - 0.5px), rgba(0, 0, 0, 0.18) calc(50% - 0.5px), rgba(0, 0, 0, 0.18) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(50% - 0.5px), rgba(0, 0, 0, 0.18) calc(50% - 0.5px), rgba(0, 0, 0, 0.18) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+
+#quadrant-overlay[hidden] {
+  display: none;
+}
+
+.q-cell.highlight {
+  background: rgba(192, 57, 43, 0.08);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* Hard mode: 2×2 grid of Guess buttons, one per board quarter */
+#quadrant-guess {
+  flex: none;
+  width: 128px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 3px;
+}
+
+#quadrant-guess[hidden] {
+  display: none;
+}
+
+.q-guess-btn {
+  padding: 0.3rem 0.25rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: var(--fg);
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.q-guess-btn:nth-child(1) { border-top-left-radius: 6px; }
+.q-guess-btn:nth-child(2) { border-top-right-radius: 6px; }
+.q-guess-btn:nth-child(3) { border-bottom-left-radius: 6px; }
+.q-guess-btn:nth-child(4) { border-bottom-right-radius: 6px; }
+
+.q-guess-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.q-guess-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ---- Guess list ---- */
@@ -167,6 +301,7 @@ main {
 }
 
 .guess-tile {
+  position: relative;
   width: 48px;
   height: 56px;
   border: 2px solid var(--tile-border);
@@ -207,6 +342,23 @@ main {
   font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
 }
 
+/* Hard mode: the guessed quarter in full ink over a ghosted copy */
+.tile-char-split {
+  position: relative;
+  display: inline-block;
+}
+.tile-ghost {
+  opacity: 0.22;
+}
+.tile-lit {
+  position: absolute;
+  inset: 0;
+}
+.tile-lit.q0 { clip-path: inset(0 50% 50% 0); }
+.tile-lit.q1 { clip-path: inset(0 0 50% 50%); }
+.tile-lit.q2 { clip-path: inset(50% 50% 0 0); }
+.tile-lit.q3 { clip-path: inset(50% 0 0 50%); }
+
 .tile-pct {
   font-size: 0.6rem;
   color: var(--subtle);
@@ -214,6 +366,10 @@ main {
 
 
 /* ---- Message ---- */
+.message:empty {
+  display: none;
+}
+
 .message {
   width: 100%;
   min-height: 1.5rem;
@@ -341,12 +497,24 @@ main {
 }
 
 /* ---- Input area ---- */
-#input-area {
+/* ---- Guess row: input · Guess / quarter buttons / Recognize ---- */
+#guess-row {
   width: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+#input-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
 }
 
 #input-shell {
   width: 100%;
+  display: flex;
+  align-items: center;
   border: 2px solid var(--border);
   border-radius: 6px;
   background: var(--tile-bg);
@@ -368,9 +536,11 @@ main {
 }
 
 #input-row {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  min-height: 56px;
+  min-height: 52px;
   gap: 0.35rem;
   padding: 0 0.35rem;
 }
@@ -385,6 +555,10 @@ main {
   background: transparent;
   color: var(--fg);
   outline: none;
+}
+
+#char-input::placeholder {
+  font-size: 0.95rem;
 }
 
 #char-input:disabled {
@@ -404,8 +578,8 @@ main {
 
 #submit-btn {
   display: block;
-  width: 100%;
-  padding: 0.6rem 1.25rem;
+  flex: none;
+  padding: 0 1.1rem;
   font-size: 0.95rem;
   font-weight: 700;
   background: var(--accent);
@@ -522,9 +696,11 @@ main {
 }
 
 /* ---- Input mode toggle ---- */
+/* Full-width Type / Draw switch under the guess row */
 #input-mode-toggle {
   display: flex;
   width: 100%;
+  margin-top: -0.4rem;
   border: 2px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
@@ -532,8 +708,8 @@ main {
 
 .mode-btn {
   flex: 1;
-  padding: 0.4rem 0;
-  font-size: 0.85rem;
+  padding: 0.55rem 0;
+  font-size: 0.95rem;
   font-weight: 600;
   border: none;
   background: var(--tile-bg);
@@ -617,7 +793,9 @@ main {
   opacity: 1;
 }
 
+/* Hard mode: centered inside the input box */
 #draw-submit-btn {
+  margin: 0 auto;
   padding: 0.42rem 0.8rem;
   font-size: 0.82rem;
   font-weight: 700;
@@ -627,6 +805,14 @@ main {
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s;
+}
+
+/* Normal mode: takes the Guess button's place */
+#guess-row > #draw-submit-btn {
+  flex: none;
+  margin: 0;
+  padding: 0 0.9rem;
+  font-size: 0.95rem;
 }
 
 #draw-submit-btn:hover:not(:disabled) {
@@ -650,6 +836,11 @@ main {
   display: none;
 }
 
+/* While candidates are showing, they get the room; drawing more strokes re-recognizes. */
+#draw-result.draw-options:not([hidden]) ~ #draw-submit-btn {
+  display: none;
+}
+
 #draw-result.draw-options {
   background: transparent;
   color: var(--fg);
@@ -661,18 +852,21 @@ main {
   padding-left: 0.25rem;
 }
 
+/* One line; scrolls sideways when the row is narrow (e.g. hard mode) */
 .draw-options-row {
   display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
+  gap: 0.3rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   align-items: center;
+  scrollbar-width: none;
 }
 
 .draw-option-btn {
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif;
   line-height: 1;
-  padding: 0.3rem 0.6rem;
+  padding: 0.25rem 0.35rem;
   border: 2px solid var(--border);
   border-radius: 6px;
   background: var(--tile-bg);
@@ -912,8 +1106,8 @@ header {
 
 /* ---- Mobile tweaks ---- */
 @media (max-width: 440px) {
-  #canvas-area, #display-canvas {
-    width: 280px;
-    height: 280px;
+  #canvas-area {
+    width: var(--board-size, 280px);
+    height: var(--board-size, 280px);
   }
 }

@@ -3,6 +3,7 @@ import {
   MAX_GUESSES,
   DEFAULT_FUZZY_N,
   makeGuess,
+  scoreGuess,
   initGame,
   getCumulativeMask,
   getTargetImageData,
@@ -14,13 +15,8 @@ import {
   renderCharDiff,
   renderCharToImageData,
   renderCharToDisplayCanvas,
-  computeFuzzyIoU,
-  computeFuzzyDice,
-  computeTargetCoverage,
-  computeOriginalTargetCoverage,
-  computeOriginalGuessCoverage,
-  computeBalancedCoverageF1,
   ensureGlyph,
+  type Quadrant,
 } from "./canvas";
 import { getDailyChar, getTodayKey, getPuzzleNumber } from "./daily";
 import type { Character } from "./characters";
@@ -30,6 +26,8 @@ import {
   saveState,
   loadLevel,
   saveLevel,
+  loadHardMode,
+  saveHardMode,
   hasSeenInstructions,
   markInstructionsSeen,
 } from "./storage";
@@ -40,6 +38,16 @@ let pool: Map<string, Character> = new Map();
 let isAnimating = false;
 // True while waiting on a font subset or pool download.
 let isLoading = false;
+
+// ---- Hard mode (experimental): each guess reveals only one chosen quarter ----
+// Toggle with ?hard=1 / ?hard=0 or the dev panel; the choice is remembered.
+let hardMode = (() => {
+  const param = new URLSearchParams(location.search).get("hard");
+  if (param !== null) saveHardMode(param === "1");
+  return loadHardMode();
+})();
+// Hard mode + draw mode: the candidate the player picked, guessed when they choose a quarter.
+let chosenDrawChar: string | null = null;
 
 // Dev-only fuzzy n control
 let fuzzyN = DEFAULT_FUZZY_N;
@@ -62,7 +70,6 @@ const inputShell = document.getElementById("input-shell") as HTMLElement;
 const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
 const guessList = document.getElementById("guess-list") as HTMLElement;
 const messageEl = document.getElementById("message") as HTMLElement;
-const attemptsEl = document.getElementById("attempts") as HTMLElement;
 
 // ---- Draw mode ----
 
@@ -171,9 +178,12 @@ function showDrawOptions(options: string[]): void {
   const buttons = Array.from(
     drawResultEl.querySelectorAll<HTMLButtonElement>(".draw-option-btn")
   );
+  chosenDrawChar = null;
+  // With nothing hovered, highlight the chosen candidate (hard mode) or the first one.
   const setActiveButton = (activeBtn: HTMLButtonElement | null) => {
     buttons.forEach((btn, index) => {
-      btn.classList.toggle("active", btn === activeBtn || (!activeBtn && index === 0));
+      const fallback = chosenDrawChar ? btn.dataset.char === chosenDrawChar : index === 0;
+      btn.classList.toggle("active", btn === activeBtn || (!activeBtn && fallback));
     });
   };
 
@@ -186,18 +196,25 @@ function showDrawOptions(options: string[]): void {
     btn.addEventListener("blur", () => setActiveButton(null));
     btn.addEventListener("click", () => {
       const char = btn.dataset.char!;
+      if (state.hard) {
+        // Hard mode: picking a candidate only chooses it; a quarter button submits it.
+        chosenDrawChar = char;
+        setActiveButton(null);
+        return;
+      }
       submitDrawnChar(char);
     });
   });
 }
 
-function submitDrawnChar(char: string): void {
+function submitDrawnChar(char: string, quadrant?: Quadrant): void {
   // Feed the recognized char into the existing type input and trigger submit
   inputEl.value = char;
+  chosenDrawChar = null;
   drawResultEl.innerHTML = "";
   drawResultEl.hidden = true;
   if (hwCanvas) hwCanvas.erase();
-  handleSubmit();
+  handleSubmit(quadrant);
 }
 
 function setDrawMode(enabled: boolean): void {
@@ -211,6 +228,8 @@ function setDrawMode(enabled: boolean): void {
   submitBtn.hidden = enabled;
   drawSubmitBtn.hidden = !enabled;
   drawClearBtn.hidden = !enabled;
+
+  renderGuessControls();
 
   if (enabled) {
     inputEl.value = "";
@@ -307,10 +326,70 @@ function openInstructions(): void {
   instructionsClose.focus();
 }
 
+// Touch devices: don't focus the input on our own — that pops up the keyboard
+// before the player asked for it. They tap the input (or Type) when ready.
+const isTouch = matchMedia("(pointer: coarse)").matches;
+
+function focusInput(): void {
+  if (!isTouch) inputEl.focus();
+}
+
+// ---- Phone keyboard: fit board + tiles + input above it ----
+// With the keyboard open there's only ~350px of screen. The board shrinks so the
+// board, tiles and input row fit exactly, and the page scrolls so the board's top
+// is at the top of the screen. (Without shrinking, the browser scrolls the input
+// back into view and pushes the board off the top.)
+const canvasArea = document.getElementById("canvas-area") as HTMLElement;
+const guessRow = document.getElementById("guess-row") as HTMLElement;
+const MIN_BOARD = 120;
+const KEYBOARD_MARGIN = 6; // breathing room between the input row and the keyboard
+let fullViewportHeight = window.visualViewport?.height ?? window.innerHeight;
+
+function isKeyboardOpen(): boolean {
+  const vv = window.visualViewport;
+  return isTouch && !!vv && document.activeElement === inputEl && vv.height < fullViewportHeight * 0.8;
+}
+
+function fitBoardToKeyboard(): void {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  if (!isKeyboardOpen()) {
+    if (document.activeElement !== inputEl) fullViewportHeight = Math.max(fullViewportHeight, vv.height);
+    canvasArea.style.removeProperty("--board-size");
+    return;
+  }
+  // Everything from the board's bottom edge to the input row's bottom edge (tiles, message, gaps).
+  // Never grow past the board's normal size (280px on phones).
+  canvasArea.style.removeProperty("--board-size");
+  const normal = canvasArea.getBoundingClientRect().width;
+  const below = guessRow.getBoundingClientRect().bottom - canvasArea.getBoundingClientRect().bottom;
+  const size = Math.max(MIN_BOARD, Math.floor(vv.height - below - KEYBOARD_MARGIN));
+  canvasArea.style.setProperty("--board-size", `${Math.min(size, normal)}px`);
+  const delta = canvasArea.getBoundingClientRect().top - vv.offsetTop;
+  if (Math.abs(delta) > 1) window.scrollBy({ top: delta, behavior: "instant" });
+}
+
+window.visualViewport?.addEventListener("resize", fitBoardToKeyboard);
+// The browser scrolls the input into view on its own; re-pin after it settles.
+window.visualViewport?.addEventListener("scroll", () => {
+  if (isKeyboardOpen()) requestAnimationFrame(fitBoardToKeyboard);
+});
+inputEl.addEventListener("focus", () => setTimeout(fitBoardToKeyboard, 350));
+inputEl.addEventListener("blur", () => setTimeout(fitBoardToKeyboard, 50));
+// Tiles or a message appearing change what has to fit below the board.
+new ResizeObserver(() => fitBoardToKeyboard()).observe(document.querySelector("main")!);
+
+// Keep focus in the input when tapping Guess / a quarter, so the phone keyboard stays open.
+function keepInputFocus(btn: HTMLElement): void {
+  btn.addEventListener("mousedown", (e) => {
+    if (document.activeElement === inputEl) e.preventDefault();
+  });
+}
+
 function closeInstructions(): void {
   instructionsModal.hidden = true;
   markInstructionsSeen();
-  if (state?.status === "playing") inputEl.focus();
+  if (state?.status === "playing") focusInput();
 }
 
 instructionsClose.addEventListener("click", closeInstructions);
@@ -322,15 +401,91 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !instructionsModal.hidden) closeInstructions();
 });
 
+// ---- Quarter guess buttons (hard mode) ----
+
+const QUADRANT_NAMES = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
+const QUADRANTS: Quadrant[] = [0, 1, 2, 3];
+
+// Highlight drawn over the board (below the draw canvas, so drawing still works).
+const quadrantOverlay = document.createElement("div");
+quadrantOverlay.id = "quadrant-overlay";
+quadrantOverlay.innerHTML = QUADRANTS.map((q) => `<div class="q-cell" data-q="${q}"></div>`).join("");
+displayCanvas.after(quadrantOverlay);
+
+// In hard mode the Guess button becomes a 2×2 grid: each button guesses its quarter.
+const quadrantGuess = document.createElement("div");
+quadrantGuess.id = "quadrant-guess";
+quadrantGuess.setAttribute("role", "group");
+quadrantGuess.setAttribute("aria-label", "Guess a quarter of the board");
+quadrantGuess.innerHTML = QUADRANTS.map(
+  (q) => `<button type="button" class="q-guess-btn" data-q="${q}" aria-label="Guess ${QUADRANT_NAMES[q]} quarter">Guess</button>`,
+).join("");
+submitBtn.after(quadrantGuess);
+
+const quadrantButtons = Array.from(quadrantGuess.querySelectorAll<HTMLButtonElement>(".q-guess-btn"));
+
+function highlightQuadrant(q: Quadrant | null): void {
+  for (const cell of quadrantOverlay.children as HTMLCollectionOf<HTMLElement>) {
+    cell.classList.toggle("highlight", Number(cell.dataset.q) === q);
+  }
+}
+
+for (const btn of quadrantButtons) {
+  const q = Number(btn.dataset.q) as Quadrant;
+  btn.addEventListener("click", () => handleSubmit(q));
+  btn.addEventListener("mouseenter", () => highlightQuadrant(q));
+  btn.addEventListener("focus", () => highlightQuadrant(q));
+  btn.addEventListener("mouseleave", () => highlightQuadrant(null));
+  btn.addEventListener("blur", () => highlightQuadrant(null));
+}
+
+const inputRow = document.getElementById("input-row") as HTMLElement;
+
+/**
+ * What sits right of the input box:
+ * - type mode: Guess (normal) or the 2×2 quarter buttons (hard)
+ * - draw mode: Recognize (normal); in hard mode the quarter buttons stay and
+ *   Recognize moves to the middle of the input box instead.
+ */
+function renderGuessControls(): void {
+  const hard = !!state?.hard;
+  const drawMode = appEl.classList.contains("draw-mode");
+  const active = hard && state.status === "playing";
+  quadrantOverlay.hidden = !active;
+  quadrantGuess.hidden = !hard;
+  // Inline style: the stylesheet's display rule on #submit-btn overrides the hidden attribute.
+  submitBtn.style.display = hard || drawMode ? "none" : "";
+  if (hard) {
+    if (drawSubmitBtn.parentElement !== inputRow) inputRow.append(drawSubmitBtn);
+  } else if (drawSubmitBtn.previousElementSibling !== submitBtn) {
+    submitBtn.after(drawSubmitBtn);
+  }
+  if (!active) highlightQuadrant(null);
+}
+
 // ---- Levels ----
 
 const levelPicker = document.getElementById("level-picker") as HTMLElement;
+const hardToggle = document.getElementById("hard-toggle-input") as HTMLInputElement;
+
+// Normal and hard games are saved separately, so toggling just swaps which one is shown.
+hardToggle.addEventListener("change", async () => {
+  if (isAnimating || isLoading) {
+    hardToggle.checked = hardMode;
+    return;
+  }
+  hardMode = hardToggle.checked;
+  saveHardMode(hardMode);
+  await switchLevel(level);
+});
 
 function renderLevelPicker(): void {
   const today = getTodayKey();
+  hardToggle.checked = hardMode;
+  hardToggle.disabled = isAnimating || isLoading;
   levelPicker.replaceChildren(
     ...LEVELS.map((l) => {
-      const saved = loadState(today, l);
+      const saved = loadState(today, l, hardMode);
       const mark = saved?.status === "won" ? "✓" : saved?.status === "lost" ? "✗" : saved?.guesses.length ? "●" : "";
       const btn = document.createElement("button");
       btn.type = "button";
@@ -363,11 +518,11 @@ async function switchLevel(next: Level): Promise<void> {
 
     const todayKey = getTodayKey();
     const target = getDailyChar(next);
-    const savedState = loadState(todayKey, next);
+    const savedState = loadState(todayKey, next, hardMode);
     state =
       savedState && savedState.target === target
         ? savedState
-        : { date: todayKey, level: next, target, guesses: [], status: "playing", maskBase64: "" };
+        : { date: todayKey, level: next, target, guesses: [], status: "playing", maskBase64: "", hard: hardMode };
 
     // Target and past guesses must render in the real font (tile popovers redraw guesses).
     await Promise.all([target, ...state.guesses.map((g) => g.char)].map(ensureGlyph));
@@ -383,7 +538,7 @@ async function switchLevel(next: Level): Promise<void> {
   render();
   renderLevelPicker();
   if (import.meta.env.DEV) updateDevLabel();
-  if (state.status === "playing" && instructionsModal.hidden) inputEl.focus();
+  if (state.status === "playing" && instructionsModal.hidden) focusInput();
 }
 
 export async function init(): Promise<void> {
@@ -392,10 +547,12 @@ export async function init(): Promise<void> {
   if (!hasSeenInstructions()) {
     openInstructions();
   } else if (state.status === "playing") {
-    inputEl.focus();
+    focusInput();
   }
 
-  submitBtn.addEventListener("click", handleSubmit);
+  submitBtn.addEventListener("click", () => handleSubmit());
+  keepInputFocus(submitBtn);
+  quadrantButtons.forEach(keepInputFocus);
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") handleSubmit();
   });
@@ -406,13 +563,20 @@ export async function init(): Promise<void> {
   }
 }
 
-async function handleSubmit(): Promise<void> {
+/** `quadrant` is required in hard mode: the quarter button that was clicked. */
+async function handleSubmit(quadrant?: Quadrant): Promise<void> {
   if (state.status !== "playing" || isAnimating || isLoading) return;
+
+  if (state.hard && quadrant === undefined) {
+    showError("Click one of the Guess quarters to guess.");
+    return;
+  }
 
   if (appEl.classList.contains("draw-mode")) {
     const firstOption = drawResultEl.querySelector<HTMLButtonElement>(".draw-option-btn");
-    if (firstOption?.dataset.char) {
-      submitDrawnChar(firstOption.dataset.char);
+    const char = chosenDrawChar ?? firstOption?.dataset.char;
+    if (char) {
+      submitDrawnChar(char, quadrant);
       return;
     }
   }
@@ -450,7 +614,7 @@ async function handleSubmit(): Promise<void> {
   }
 
   const prevMask = getCumulativeMask().slice(); // snapshot before update
-  const { state: newState } = makeGuess(state, char, fuzzyN);
+  const { state: newState } = makeGuess(state, char, fuzzyN, state.hard ? quadrant : undefined);
   state = newState;
   saveState(state);
   inputEl.value = "";
@@ -468,12 +632,11 @@ async function handleSubmit(): Promise<void> {
     render();
     renderLevelPicker();
     if (import.meta.env.DEV) recalculateFuzzyScores();
-    if (state.status === "playing") inputEl.focus();
+    if (state.status === "playing") focusInput();
   });
 
   // Update guess list and message immediately (canvas animates separately)
   renderGuessList();
-  updateAttemptsCounter();
   renderMessage();
 }
 
@@ -504,21 +667,31 @@ function updateInputHint(): void {
   inputShell.title = off ? offLevelTitle() : "";
 }
 
+// Errors show as a banner over the bottom of the board, so they never shift the
+// layout (with the phone keyboard open there's no room for an extra row).
+const errorToast = document.createElement("div");
+errorToast.id = "error-toast";
+errorToast.setAttribute("role", "alert");
+errorToast.hidden = true;
+document.getElementById("canvas-area")!.append(errorToast);
+let errorTimer: ReturnType<typeof setTimeout> | undefined;
+
 function showError(msg: string): void {
-  messageEl.textContent = msg;
-  messageEl.className = "message error";
-  setTimeout(() => {
-    if (messageEl.className === "message error" && messageEl.textContent === msg) {
-      messageEl.textContent = "";
-      messageEl.className = "message";
-    }
-  }, 2000);
+  errorToast.textContent = msg;
+  errorToast.hidden = false;
+  clearTimeout(errorTimer);
+  errorTimer = setTimeout(() => (errorToast.hidden = true), 2500);
 }
 
 function setInputEnabled(enabled: boolean): void {
   if (enabled && state?.status !== "playing") return;
-  inputEl.disabled = !enabled;
+  // The text input is only disabled once the game is over. Disabling it while a
+  // guess animates or a level loads would blur it, and on phones the keyboard
+  // would close and reopen on every guess. Submits are blocked by
+  // isAnimating / isLoading instead.
+  inputEl.disabled = !!state && state.status !== "playing";
   submitBtn.disabled = !enabled;
+  for (const btn of quadrantButtons) btn.disabled = !enabled;
   drawSubmitBtn.disabled = !enabled;
 }
 
@@ -532,8 +705,8 @@ function render(): void {
   }
 
   renderGuessList();
-  updateAttemptsCounter();
   renderMessage();
+  renderGuessControls();
 
   const playing = state.status === "playing";
   setInputEnabled(playing);
@@ -572,7 +745,12 @@ function createGuessTile(g: GuessResult): HTMLElement {
   const colors = getOverlapColors(pct);
   tile.style.setProperty("--overlap-bg", colors.background);
   tile.style.setProperty("--overlap-border", colors.border);
-  tile.innerHTML = `<span class="tile-char">${g.char}</span><span class="tile-pct">${pct}%</span>`;
+  // Hard mode: the guessed quarter stays full ink, the other three are ghosted.
+  const charHtml =
+    g.quadrant === undefined
+      ? `<span class="tile-char">${g.char}</span>`
+      : `<span class="tile-char tile-char-split"><span class="tile-ghost">${g.char}</span><span class="tile-lit q${g.quadrant}" aria-hidden="true">${g.char}</span></span>`;
+  tile.innerHTML = `${charHtml}<span class="tile-pct">${pct}%</span>`;
 
   tile.addEventListener("mouseenter", (e) => {
     const targetData = getTargetImageData();
@@ -580,7 +758,7 @@ function createGuessTile(g: GuessResult): HTMLElement {
     if (popoverDiffMode) {
       renderCharDiff(targetData, g.char, popoverCanvas);
     } else {
-      renderSingleOverlap(targetData, g.char, popoverCanvas);
+      renderSingleOverlap(targetData, g.char, popoverCanvas, g.quadrant);
     }
     positionPopover(e.currentTarget as HTMLElement);
     popover.classList.add("visible");
@@ -611,10 +789,6 @@ function positionPopover(tile: HTMLElement): void {
 
   popover.style.top = `${top}px`;
   popover.style.left = `${left}px`;
-}
-
-function updateAttemptsCounter(): void {
-  attemptsEl.textContent = `${state.guesses.length} / ${MAX_GUESSES}`;
 }
 
 type RgbColor = { r: number; g: number; b: number };
@@ -669,7 +843,7 @@ function buildShareText(): string {
   const n = getPuzzleNumber();
   const guessCount = state.status === "won" ? `${state.guesses.length}` : "X";
   const emojis = state.guesses.map((g) => getShareEmojiForOverlap(g.overlapPct));
-  const name = `Hanzile ${LEVEL_INFO[level].name} #${n}`;
+  const name = `Hanzile ${LEVEL_INFO[level].name}${state.hard ? " (hard)" : ""} #${n}`;
   const header = state.status === "won"
     ? `I solved ${name} in ${guessCount} attempt${guessCount === "1" ? "" : "s"}!`
     : `Aya! I didn't solve ${name}! Can you?`;
@@ -743,18 +917,7 @@ function recalculateFuzzyScores(): void {
 
   state.guesses = state.guesses.map((g) => {
     const guessData = renderCharToImageData(g.char);
-    const isWon = g.char === state.target;
-    const scores = {
-      dice: isWon ? 100 : Math.min(99, computeFuzzyDice(targetData, guessData, fuzzyN)),
-      iou: isWon ? 100 : Math.min(99, computeFuzzyIoU(targetData, guessData, fuzzyN)),
-      coverage: isWon ? 100 : Math.min(99, computeTargetCoverage(targetData, guessData, fuzzyN)),
-      originalCoverage:
-        isWon ? 100 : Math.min(99, computeOriginalTargetCoverage(targetData, guessData, fuzzyN)),
-      originalGuessCoverage:
-        isWon ? 100 : Math.min(99, computeOriginalGuessCoverage(targetData, guessData, fuzzyN)),
-      balancedF1:
-        isWon ? 100 : Math.min(99, computeBalancedCoverageF1(targetData, guessData, fuzzyN)),
-    };
+    const scores = scoreGuess(targetData, guessData, g.char === state.target, fuzzyN, g.quadrant);
 
     return {
       ...g,
@@ -834,6 +997,7 @@ async function resetWithChar(char: string): Promise<void> {
     guesses: [],
     status: "playing",
     maskBase64: "",
+    hard: hardMode,
   };
   saveState(state);
   initGame(state);
