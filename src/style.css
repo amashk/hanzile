@@ -16,6 +16,7 @@
   --failure-fg: #721c24;
   --error-bg: #fff3cd;
   --error-fg: #856404;
+  --off-level-fg: #a3a3a3;
 }
 
 /* ---- Reset ---- */
@@ -58,6 +59,57 @@ header {
   font-size: 0.85rem;
   color: var(--subtle);
   margin-top: -2.5rem;
+}
+
+/* ---- Level picker ---- */
+#level-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-top: -0.5rem;
+}
+
+.level-btn {
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--tile-bg);
+  color: var(--fg);
+  padding: 0.35rem 0.25rem;
+  cursor: pointer;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.2;
+}
+
+.level-btn:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+}
+
+.level-btn.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.level-btn:disabled {
+  cursor: default;
+}
+
+.level-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.level-mark {
+  margin-left: 0.25rem;
+  font-size: 0.75em;
+}
+
+.level-source {
+  font-size: 0.7rem;
+  opacity: 0.75;
 }
 
 main {
@@ -304,6 +356,15 @@ main {
 
 #input-shell:focus-within {
   border-color: var(--accent);
+}
+
+/* Off-level char: allowed as a guess but can't be the answer. */
+#input-shell.off-level {
+  border-style: dashed;
+}
+
+#input-shell.off-level #char-input {
+  color: var(--off-level-fg);
 }
 
 #input-row {
@@ -626,6 +687,11 @@ main {
   background: var(--canvas-bg);
 }
 
+.draw-option-btn.off-level {
+  border-style: dashed;
+  color: var(--off-level-fg);
+}
+
 /* ---- Help button ---- */
 #help-btn {
   position: absolute;
@@ -832,6 +898,16 @@ header {
 #footer-kofi {
   display: flex;
   justify-content: center;
+}
+
+#footer-credits {
+  margin-top: 0.75rem;
+  font-size: 0.7rem;
+  color: var(--subtle);
+}
+
+#footer-credits a {
+  color: inherit;
 }
 
 /* ---- Mobile tweaks ---- */

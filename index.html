@@ -19,6 +19,8 @@
         <button id="help-btn" aria-label="How to play">?</button>
       </header>
 
+      <nav id="level-picker" aria-label="Level"></nav>
+
       <!-- Instructions modal -->
       <div id="instructions-modal" role="dialog" aria-modal="true" aria-label="How to play" hidden>
         <div id="instructions-backdrop"></div>
@@ -64,6 +66,11 @@
             <span class="legend-target">■ Target only</span>
             <span class="legend-guess">■ Guess only</span>
           </div>
+
+          <h3>Levels</h3>
+          <p>There are three puzzles every day, one per level. Pick the one that matches the characters you know:<br>
+          <strong>Apprentice</strong> — HSK 1–2 · <strong>Scholar</strong> — HSK 3–5 · <strong>Master</strong> — HSK 6–9</p>
+          <p>You can guess <strong>any</strong> character. A character shown <span style="color:var(--off-level-fg);border:1px dashed var(--off-level-fg);padding:0 0.25em;border-radius:3px">gray and dashed</span> while you type or draw isn't on your level's list, so it can't be the answer — but its overlap still counts as a hint.</p>
 
           <h3>Input</h3>
           <p><strong>⌨ Type</strong> — use your IME to enter a character.<br>
@@ -129,6 +136,11 @@
 
       <footer id="footer">
         <div id="footer-kofi"></div>
+        <p id="footer-credits">
+          Character lists: <a href="https://github.com/ivankra/hsk30" target="_blank" rel="noopener">HSK 3.0</a> ·
+          Definitions: <a href="https://www.mdbg.net/chinese/dictionary?page=cc-cedict" target="_blank" rel="noopener">CC-CEDICT</a>
+          (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>)
+        </p>
       </footer>
     </div>
     <script src="/handwriting.js"></script>

@@ -2,6 +2,22 @@ const CANVAS_SIZE = 300;
 const FONT_SIZE = 240;
 const FONT = `${FONT_SIZE}px "Noto Sans SC", "Microsoft YaHei", "SimSun", sans-serif`;
 
+/**
+ * Make sure the Noto Sans SC subset containing `char` is downloaded before it's
+ * drawn — otherwise the canvas silently falls back to a system font. Resolves
+ * false when the font has no glyph for the character.
+ */
+export async function ensureGlyph(char: string): Promise<boolean> {
+  try {
+    const faces = await document.fonts.load(`${FONT_SIZE}px "Noto Sans SC"`, char);
+    if (faces.length) return true;
+    // If the web font never loaded (offline, blocked), don't reject every guess.
+    return ![...document.fonts].some((f) => f.family.replace(/"/g, "") === "Noto Sans SC" && f.status === "loaded");
+  } catch {
+    return true;
+  }
+}
+
 interface Bounds {
   minRow: number;
   maxRow: number;

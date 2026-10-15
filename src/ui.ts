@@ -20,13 +20,26 @@ import {
   computeOriginalTargetCoverage,
   computeOriginalGuessCoverage,
   computeBalancedCoverageF1,
+  ensureGlyph,
 } from "./canvas";
-import { getDailyCharacter, getTodayKey, getPuzzleNumber } from "./daily";
-import { CHARACTERS } from "./characters";
-import { loadState, saveState, hasSeenInstructions, markInstructionsSeen } from "./storage";
+import { getDailyChar, getTodayKey, getPuzzleNumber } from "./daily";
+import type { Character } from "./characters";
+import { LEVELS, LEVEL_INFO, loadPool, type Level } from "./levels";
+import {
+  loadState,
+  saveState,
+  loadLevel,
+  saveLevel,
+  hasSeenInstructions,
+  markInstructionsSeen,
+} from "./storage";
 
 let state: GameState;
+let level: Level;
+let pool: Map<string, Character> = new Map();
 let isAnimating = false;
+// True while waiting on a font subset or pool download.
+let isLoading = false;
 
 // Dev-only fuzzy n control
 let fuzzyN = DEFAULT_FUZZY_N;
@@ -45,6 +58,7 @@ const displayCanvas = document.getElementById(
   "display-canvas"
 ) as HTMLCanvasElement;
 const inputEl = document.getElementById("char-input") as HTMLInputElement;
+const inputShell = document.getElementById("input-shell") as HTMLElement;
 const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
 const guessList = document.getElementById("guess-list") as HTMLElement;
 const messageEl = document.getElementById("message") as HTMLElement;
@@ -148,7 +162,10 @@ function showDrawOptions(options: string[]): void {
   drawResultEl.hidden = false;
   drawResultEl.innerHTML = `
     <div class="draw-options-row">
-      ${options.map(ch => `<button class="draw-option-btn" data-char="${ch}">${ch}</button>`).join("")}
+      ${options.map(ch => {
+        const off = isOffLevel(ch);
+        return `<button class="draw-option-btn${off ? " off-level" : ""}" data-char="${ch}"${off ? ` title="${offLevelTitle()}"` : ""}>${ch}</button>`;
+      }).join("")}
     </div>
   `;
   const buttons = Array.from(
@@ -197,6 +214,7 @@ function setDrawMode(enabled: boolean): void {
 
   if (enabled) {
     inputEl.value = "";
+    updateInputHint();
     inputEl.placeholder = "Draw a character…";
     drawResultEl.innerHTML = "";
     drawResultEl.hidden = true;
@@ -229,6 +247,7 @@ drawClearBtn.addEventListener("click", () => {
   drawResultEl.innerHTML = "";
   drawResultEl.hidden = true;
   inputEl.value = "";
+  updateInputHint();
 });
 
 drawSubmitBtn.addEventListener("click", () => {
@@ -291,7 +310,7 @@ function openInstructions(): void {
 function closeInstructions(): void {
   instructionsModal.hidden = true;
   markInstructionsSeen();
-  if (state.status === "playing") inputEl.focus();
+  if (state?.status === "playing") inputEl.focus();
 }
 
 instructionsClose.addEventListener("click", closeInstructions);
@@ -303,25 +322,72 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !instructionsModal.hidden) closeInstructions();
 });
 
-export function init(): void {
-  const todayKey = getTodayKey();
-  const savedState = loadState(todayKey);
-  const dailyChar = getDailyCharacter();
+// ---- Levels ----
 
-  if (savedState && savedState.target === dailyChar.char) {
-    state = savedState;
-  } else {
-    state = {
-      date: todayKey,
-      target: dailyChar.char,
-      guesses: [],
-      status: "playing",
-      maskBase64: "",
-    };
+const levelPicker = document.getElementById("level-picker") as HTMLElement;
+
+function renderLevelPicker(): void {
+  const today = getTodayKey();
+  levelPicker.replaceChildren(
+    ...LEVELS.map((l) => {
+      const saved = loadState(today, l);
+      const mark = saved?.status === "won" ? "✓" : saved?.status === "lost" ? "✗" : saved?.guesses.length ? "●" : "";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `level-btn${l === level ? " active" : ""}`;
+      btn.setAttribute("aria-pressed", String(l === level));
+      btn.disabled = isAnimating || isLoading;
+      btn.innerHTML = `<span class="level-name"></span><span class="level-source"></span>`;
+      btn.querySelector(".level-name")!.textContent = LEVEL_INFO[l].name;
+      if (mark) {
+        btn.querySelector(".level-name")!.insertAdjacentHTML("beforeend", `<span class="level-mark">${mark}</span>`);
+      }
+      btn.querySelector(".level-source")!.textContent = LEVEL_INFO[l].source;
+      btn.addEventListener("click", () => {
+        if (l !== level) switchLevel(l);
+      });
+      return btn;
+    }),
+  );
+}
+
+async function switchLevel(next: Level): Promise<void> {
+  if (isAnimating || isLoading) return;
+  isLoading = true;
+  setInputEnabled(false);
+  renderLevelPicker();
+  try {
+    level = next;
+    saveLevel(next);
+    pool = await loadPool(next);
+
+    const todayKey = getTodayKey();
+    const target = getDailyChar(next);
+    const savedState = loadState(todayKey, next);
+    state =
+      savedState && savedState.target === target
+        ? savedState
+        : { date: todayKey, level: next, target, guesses: [], status: "playing", maskBase64: "" };
+
+    // Target and past guesses must render in the real font (tile popovers redraw guesses).
+    await Promise.all([target, ...state.guesses.map((g) => g.char)].map(ensureGlyph));
+    initGame(state);
+  } finally {
+    isLoading = false;
   }
 
-  initGame(state);
+  popover.classList.remove("visible");
+  messageEl.textContent = "";
+  messageEl.className = "message";
+  updateInputHint();
   render();
+  renderLevelPicker();
+  if (import.meta.env.DEV) updateDevLabel();
+  if (state.status === "playing" && instructionsModal.hidden) inputEl.focus();
+}
+
+export async function init(): Promise<void> {
+  await switchLevel(loadLevel() ?? "apprentice");
 
   if (!hasSeenInstructions()) {
     openInstructions();
@@ -333,14 +399,15 @@ export function init(): void {
   inputEl.addEventListener("keydown", (e) => {
     if (e.key === "Enter") handleSubmit();
   });
+  inputEl.addEventListener("input", updateInputHint);
 
   if (import.meta.env.DEV) {
     setupDevPanel();
   }
 }
 
-function handleSubmit(): void {
-  if (state.status !== "playing" || isAnimating) return;
+async function handleSubmit(): Promise<void> {
+  if (state.status !== "playing" || isAnimating || isLoading) return;
 
   if (appEl.classList.contains("draw-mode")) {
     const firstOption = drawResultEl.querySelector<HTMLButtonElement>(".draw-option-btn");
@@ -371,21 +438,35 @@ function handleSubmit(): void {
     return;
   }
 
+  // Load the font subset for this char first; reject chars the font can't draw.
+  isLoading = true;
+  setInputEnabled(false);
+  const renderable = await ensureGlyph(char);
+  isLoading = false;
+  if (!renderable) {
+    setInputEnabled(true);
+    showError(`${char} isn't supported by the game font — try another character.`);
+    return;
+  }
+
   const prevMask = getCumulativeMask().slice(); // snapshot before update
   const { state: newState } = makeGuess(state, char, fuzzyN);
   state = newState;
-  saveState(state.date, state);
+  saveState(state);
   inputEl.value = "";
+  updateInputHint();
 
   // Animate new overlap, then finish render
   const targetData = getTargetImageData()!;
   const newMask = getCumulativeMask();
   isAnimating = true;
   setInputEnabled(false);
+  renderLevelPicker();
 
   animateReveal(displayCanvas, targetData, prevMask, newMask, () => {
     isAnimating = false;
     render();
+    renderLevelPicker();
     if (import.meta.env.DEV) recalculateFuzzyScores();
     if (state.status === "playing") inputEl.focus();
   });
@@ -405,11 +486,29 @@ function isCJK(char: string): boolean {
   );
 }
 
+// ---- Off-level hint ----
+
+function isOffLevel(char: string): boolean {
+  return !pool.has(char);
+}
+
+function offLevelTitle(): string {
+  return `Not on the ${LEVEL_INFO[level].name} list — can't be the answer`;
+}
+
+/** Shade the input while it holds a single char that isn't on the current level's list. */
+function updateInputHint(): void {
+  const cjk = [...inputEl.value].filter(isCJK);
+  const off = cjk.length === 1 && isOffLevel(cjk[0]);
+  inputShell.classList.toggle("off-level", off);
+  inputShell.title = off ? offLevelTitle() : "";
+}
+
 function showError(msg: string): void {
   messageEl.textContent = msg;
   messageEl.className = "message error";
   setTimeout(() => {
-    if (messageEl.className === "message error") {
+    if (messageEl.className === "message error" && messageEl.textContent === msg) {
       messageEl.textContent = "";
       messageEl.className = "message";
     }
@@ -417,7 +516,7 @@ function showError(msg: string): void {
 }
 
 function setInputEnabled(enabled: boolean): void {
-  if (state.status !== "playing") return;
+  if (enabled && state?.status !== "playing") return;
   inputEl.disabled = !enabled;
   submitBtn.disabled = !enabled;
   drawSubmitBtn.disabled = !enabled;
@@ -570,9 +669,10 @@ function buildShareText(): string {
   const n = getPuzzleNumber();
   const guessCount = state.status === "won" ? `${state.guesses.length}` : "X";
   const emojis = state.guesses.map((g) => getShareEmojiForOverlap(g.overlapPct));
+  const name = `Hanzile ${LEVEL_INFO[level].name} #${n}`;
   const header = state.status === "won"
-    ? `I solved Hanzile #${n} in ${guessCount} attempt${guessCount === "1" ? "" : "s"}!`
-    : `Aya! I didn't solve Hanzile #${n}! Can you?`;
+    ? `I solved ${name} in ${guessCount} attempt${guessCount === "1" ? "" : "s"}!`
+    : `Aya! I didn't solve ${name}! Can you?`;
   return `${header}\n${emojis.join("")}\nhanzile.atone.fun`;
 }
 
@@ -618,15 +718,18 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !shareModal.hidden) closeShareModal();
 });
 
+function describeTarget(): string {
+  const c = pool.get(state.target);
+  return c ? `<strong>${c.char}</strong> (${c.pinyin}) — ${c.meaning}` : `<strong>${state.target}</strong>`;
+}
+
 function renderMessage(): void {
   if (state.status === "won") {
-    const c = getDailyCharacter();
-    messageEl.innerHTML = `<strong>🎉 Correct!</strong> The character is <strong>${c.char}</strong> (${c.pinyin}) — ${c.meaning}<br><button id="share-btn" type="button">Share!</button>`;
+    messageEl.innerHTML = `<strong>🎉 Correct!</strong> The character is ${describeTarget()}<br><button id="share-btn" type="button">Share!</button>`;
     messageEl.className = "message success";
     document.getElementById("share-btn")!.addEventListener("click", openShareModal);
   } else if (state.status === "lost") {
-    const c = getDailyCharacter();
-    messageEl.innerHTML = `<strong>Game over.</strong> The answer was <strong>${c.char}</strong> (${c.pinyin}) — ${c.meaning}<br><button id="share-btn" type="button">Share!</button>`;
+    messageEl.innerHTML = `<strong>Game over.</strong> The answer was ${describeTarget()}<br><button id="share-btn" type="button">Share!</button>`;
     messageEl.className = "message failure";
     document.getElementById("share-btn")!.addEventListener("click", openShareModal);
   }
@@ -707,8 +810,8 @@ function setupDevPanel(): void {
   });
 
   document.getElementById("dev-random")!.addEventListener("click", () => {
-    const char = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)].char;
-    resetWithChar(char);
+    const chars = [...pool.keys()];
+    resetWithChar(chars[Math.floor(Math.random() * chars.length)]);
   });
 
   document.getElementById("dev-set")!.addEventListener("click", () => {
@@ -722,16 +825,17 @@ function setupDevPanel(): void {
   });
 }
 
-function resetWithChar(char: string): void {
-  const todayKey = getTodayKey();
+async function resetWithChar(char: string): Promise<void> {
+  await ensureGlyph(char);
   state = {
-    date: todayKey,
+    date: getTodayKey(),
+    level,
     target: char,
     guesses: [],
     status: "playing",
     maskBase64: "",
   };
-  saveState(todayKey, state);
+  saveState(state);
   initGame(state);
   isAnimating = false;
   messageEl.textContent = "";

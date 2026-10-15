@@ -8,6 +8,7 @@ import {
   computeOriginalGuessCoverage,
   computeBalancedCoverageF1,
 } from "./canvas";
+import type { Level } from "./levels";
 
 export const MAX_GUESSES = 6;
 export const DEFAULT_FUZZY_N = 2;
@@ -27,6 +28,7 @@ export interface GuessResult {
 
 export interface GameState {
   date: string;
+  level: Level;
   target: string;
   guesses: GuessResult[];
   status: "playing" | "won" | "lost";

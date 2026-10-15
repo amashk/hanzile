@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- Dev-only: served by `npm run dev` at /pools.html, not part of the production build. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hanzile Pools</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #fafaf8;
+        --fg: #1a1a1a;
+        --subtle: #666;
+        --border: #ddd;
+        --accent: #c0392b;
+        --card: #fff;
+        --flag: #fff3cd;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: "Noto Sans SC", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        padding: 1rem;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+        padding-bottom: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        z-index: 1;
+      }
+      h1 { font-size: 1.1rem; margin-right: 0.5rem; }
+      .tab {
+        border: 1px solid var(--border);
+        background: var(--card);
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        cursor: pointer;
+        font: inherit;
+      }
+      .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+      input[type="search"] {
+        flex: 1 1 12rem;
+        padding: 0.4rem 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font: inherit;
+      }
+      label { font-size: 0.9rem; display: flex; gap: 0.3rem; align-items: center; }
+      #count { color: var(--subtle); font-size: 0.9rem; width: 100%; }
+      #grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.5rem;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.5rem;
+        text-align: center;
+      }
+      .card.flagged { background: var(--flag); }
+      .char { font-size: 3.5rem; line-height: 1.2; }
+      .pinyin { font-weight: 700; }
+      .meaning { font-size: 0.8rem; color: var(--subtle); overflow-wrap: anywhere; }
+      .level { font-size: 0.7rem; color: var(--subtle); text-transform: uppercase; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Hanzile pools</h1>
+      <div id="tabs"></div>
+      <input id="search" type="search" placeholder="Search char, pinyin, meaning…" />
+      <label><input id="flagged" type="checkbox" /> Needs review only</label>
+      <div id="count"></div>
+    </header>
+    <div id="grid"></div>
+    <script type="module" src="/src/pools-viewer.ts"></script>
+  </body>
+</html>

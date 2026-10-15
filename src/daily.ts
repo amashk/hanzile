@@ -1,23 +1,32 @@
-import { CHARACTERS, type Character } from "./characters";
+import { SCHEDULE } from "./data/schedule";
+import { EPOCH_UTC, decodeDay, type Level } from "./schedule-codec";
 
-const EPOCH = new Date("2026-03-20");
+const scheduleBytes = new Map<Level, Uint8Array>();
 
-export function getDailyCharacter(): Character {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const daysSinceEpoch = Math.floor(
-    (today.getTime() - EPOCH.getTime()) / 86400000
-  );
-  const index =
-    ((daysSinceEpoch * 37) % CHARACTERS.length + CHARACTERS.length) %
-    CHARACTERS.length;
-  return CHARACTERS[index];
+function getScheduleBytes(level: Level): Uint8Array {
+  let bytes = scheduleBytes.get(level);
+  if (!bytes) {
+    const raw = atob(SCHEDULE[level]);
+    bytes = Uint8Array.from(raw, (c) => c.charCodeAt(0));
+    scheduleBytes.set(level, bytes);
+  }
+  return bytes;
+}
+
+// Days since epoch for the player's local calendar date, independent of time zone offset.
+function getDayIndex(): number {
+  const d = new Date();
+  return Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - EPOCH_UTC) / 86400000);
+}
+
+export function getDailyChar(level: Level): string {
+  const char = decodeDay(getScheduleBytes(level), level, getDayIndex());
+  if (!char) throw new Error(`No ${level} puzzle scheduled for today — run scripts/build-pools.ts`);
+  return char;
 }
 
 export function getPuzzleNumber(): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.floor((today.getTime() - EPOCH.getTime()) / 86400000) + 1;
+  return getDayIndex() + 1;
 }
 
 export function getTodayKey(): string {
