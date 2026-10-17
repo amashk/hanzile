@@ -897,13 +897,17 @@ function describeTarget(): string {
   return c ? `<strong>${c.char}</strong> (${c.pinyin}) — ${c.meaning}` : `<strong>${state.target}</strong>`;
 }
 
+// Shown under the answer once the game ends: the player is looking at its pinyin right then.
+const ATONE_PROMO =
+  `<a class="atone-promo" href="https://atone.fun/?utm_source=hanzile&utm_medium=result" target="_blank" rel="noopener" data-umami-event="atone-result">Practice its tone in <strong>Atone</strong> →</a>`;
+
 function renderMessage(): void {
   if (state.status === "won") {
-    messageEl.innerHTML = `<strong>🎉 Correct!</strong> The character is ${describeTarget()}<br><button id="share-btn" type="button">Share!</button>`;
+    messageEl.innerHTML = `<strong>🎉 Correct!</strong> The character is ${describeTarget()}<br><button id="share-btn" type="button">Share!</button>${ATONE_PROMO}`;
     messageEl.className = "message success";
     document.getElementById("share-btn")!.addEventListener("click", openShareModal);
   } else if (state.status === "lost") {
-    messageEl.innerHTML = `<strong>Game over.</strong> The answer was ${describeTarget()}<br><button id="share-btn" type="button">Share!</button>`;
+    messageEl.innerHTML = `<strong>Game over.</strong> The answer was ${describeTarget()}<br><button id="share-btn" type="button">Share!</button>${ATONE_PROMO}`;
     messageEl.className = "message failure";
     document.getElementById("share-btn")!.addEventListener("click", openShareModal);
   }

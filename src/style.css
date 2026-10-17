@@ -415,6 +415,20 @@ main {
   background: #fefce8;
 }
 
+.atone-promo {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: inherit;
+  opacity: 0.8;
+  text-decoration: none;
+}
+
+.atone-promo:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 /* Share modal */
 #share-modal {
   position: fixed;
@@ -1169,9 +1183,23 @@ header {
   text-align: center;
 }
 
-#footer-kofi {
-  display: flex;
-  justify-content: center;
+#footer-links {
+  font-size: 0.85rem;
+  color: var(--subtle);
+}
+
+#footer-links a {
+  color: inherit;
+  font-weight: 600;
+}
+
+#footer-links #footer-kofi {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+#footer-links #footer-kofi:hover {
+  text-decoration: underline;
 }
 
 #footer-credits {
