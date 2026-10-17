@@ -1083,6 +1083,86 @@ header {
   background: var(--accent-hover);
 }
 
+/* ---- Site title (logo inside h1) ---- */
+#site-title {
+  font-size: inherit;
+  line-height: 0;
+}
+
+/* ---- About (collapsible card below the game) ---- */
+#about {
+  margin-top: 1.5rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--tile-bg);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+#about summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+#about summary::-webkit-details-marker {
+  display: none;
+}
+
+#about summary::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--subtle);
+  border-bottom: 2px solid var(--subtle);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform 0.15s;
+}
+
+#about[open] summary::after {
+  transform: rotate(-135deg) translateY(-2px);
+}
+
+#about summary:hover h2 {
+  color: var(--accent);
+}
+
+#about h2 {
+  font-size: 1rem;
+}
+
+.about-body {
+  padding: 0 0.9rem 0.9rem;
+}
+
+#about h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--subtle);
+  margin: 1.1rem 0 0.35rem;
+}
+
+#about h3:first-of-type {
+  margin-top: 0.75rem;
+}
+
+#about p + p {
+  margin-top: 0.6rem;
+}
+
+#about ul {
+  margin: 0.5rem 0 0.6rem 1.25rem;
+}
+
+#about a {
+  color: inherit;
+}
+
 /* ---- Footer ---- */
 #footer {
   padding: 1rem 1rem 2rem;

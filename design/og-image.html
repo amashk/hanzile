@@ -1,0 +1,69 @@
+<!doctype html>
+<!-- Source for public/og-image.png (1200x630). Render it at that size in a browser and screenshot. -->
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 1200px; height: 630px; background: #fafaf8; font-family: "Noto Sans SC", sans-serif; color: #1a1a1a;
+         display: flex; align-items: center; gap: 56px; padding: 0 72px; border-bottom: 10px solid #c0392b; }
+  .left { flex: 1; display: flex; flex-direction: column; gap: 22px; }
+  .logo { width: 400px; height: auto; margin: 0 0 8px -12px; }
+  h1 { font-size: 44px; line-height: 1.15; font-weight: 700; }
+  .chips { display: flex; gap: 10px; }
+  .chip { font-size: 22px; padding: 6px 16px; border-radius: 999px; border: 2px solid #ddd; background: #fff; }
+  .chip b { color: #c0392b; }
+  .url { font-size: 24px; color: #666; }
+  .right { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+  canvas { width: 380px; height: 380px; border-radius: 14px; background: #f0ede8; box-shadow: 0 4px 22px rgba(0,0,0,.14); }
+  .tiles { display: flex; gap: 12px; }
+  .tile { width: 76px; height: 88px; border-radius: 10px; border: 3px solid; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; }
+  .tile .c { font-size: 34px; line-height: 1; } .tile .p { font-size: 15px; color: #666; margin-top: 4px; }
+  .tile.q { border-color: #c0392b; color: #aaa; font-size: 30px; background: #fff; }
+</style></head>
+<body>
+  <div class="left">
+    <img class="logo" src="logo-crop.png" alt="">
+    <h1>Guess the daily<br>Chinese character</h1>
+    <div class="chips"><span class="chip"><b>3</b> levels · HSK 1–9</span><span class="chip">6 guesses</span><span class="chip">Hard mode</span></div>
+    <div class="url">hanzile.atone.fun</div>
+  </div>
+  <div class="right">
+    <canvas id="board" width="300" height="300"></canvas>
+    <div class="tiles" id="tiles"></div>
+  </div>
+<script>
+// Same rule as the game: show target pixels where target and guess both have ink (alpha > 64).
+const S = 300, TARGET = "字", GUESSES = ["安", "好", "存"];
+function ink(ch) {
+  const c = document.createElement("canvas"); c.width = c.height = S;
+  const x = c.getContext("2d"); x.font = '240px "Noto Sans SC"'; x.textAlign = "center"; x.textBaseline = "middle";
+  x.fillText(ch, S / 2, S / 2); return x.getImageData(0, 0, S, S).data;
+}
+function colors(p) {
+  const lerp = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const R = [255, 69, 58], O = [255, 159, 10], Y = [255, 214, 10], G = [48, 209, 88];
+  const base = p <= 25 ? lerp(R, O, p / 25) : p <= 50 ? lerp(O, Y, (p - 25) / 25) : lerp(Y, G, (p - 50) / 50);
+  const w = (t) => `rgb(${lerp(base, [255, 255, 255], t).join(",")})`;
+  return [w(0.78), w(0.42)];
+}
+document.fonts.load('240px "Noto Sans SC"', TARGET + GUESSES.join("")).then(() => {
+  const t = ink(TARGET), mask = new Uint8Array(S * S);
+  const tiles = document.getElementById("tiles");
+  for (const g of GUESSES) {
+    const d = ink(g); let both = 0, tc = 0, gc = 0;
+    for (let i = 0; i < S * S; i++) {
+      const a = t[i * 4 + 3] > 64, b = d[i * 4 + 3] > 64;
+      if (a) tc++; if (b) gc++; if (a && b) { both++; mask[i] = 1; }
+    }
+    const pct = Math.round((2 * both) / (tc + gc) * 100);
+    const [bg, border] = colors(pct);
+    tiles.insertAdjacentHTML("beforeend", `<div class="tile" style="background:${bg};border-color:${border}"><span class="c">${g}</span><span class="p">${pct}%</span></div>`);
+  }
+  tiles.insertAdjacentHTML("beforeend", `<div class="tile q">?</div>`);
+  const ctx = document.getElementById("board").getContext("2d"), img = ctx.createImageData(S, S);
+  for (let i = 0; i < S * S; i++) if (mask[i]) { img.data[i * 4 + 3] = t[i * 4 + 3]; }
+  ctx.putImageData(img, 0, 0);
+  document.body.dataset.ready = "1";
+});
+</script></body></html>

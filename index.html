@@ -5,9 +5,47 @@
     <!-- interactive-widget: on Android the keyboard resizes the page (instead of panning a
          smaller visible area over it), so the board can be pinned to the top while typing. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
-    <title>Hanzile — Daily Chinese Character Game</title>
-    <meta name="description" content="Guess the daily Chinese character in 6 attempts. Each guess reveals the stroke overlap between your guess and the target." />
-    <link rel="icon" type="image/png" href="/hanzile_logo.png" />
+    <title>Hanzile – Daily Chinese Character Game (Hanzi Wordle)</title>
+    <meta name="description" content="Guess the daily Chinese character in 6 tries. Each guess reveals the strokes it shares with the hidden hanzi. Three levels for HSK 1–9 learners, plus hard mode." />
+    <link rel="canonical" href="https://hanzile.atone.fun/" />
+    <meta name="theme-color" content="#c0392b" />
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Link previews (WhatsApp, Discord, X, Facebook, …) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Hanzile" />
+    <meta property="og:url" content="https://hanzile.atone.fun/" />
+    <meta property="og:title" content="Hanzile – Guess the daily Chinese character" />
+    <meta property="og:description" content="Guess the daily Chinese character in 6 tries. Each guess reveals the strokes it shares with the hidden hanzi. Three levels for HSK 1–9 learners, plus hard mode." />
+    <meta property="og:image" content="https://hanzile.atone.fun/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Hanzile: a partly revealed Chinese character with three guesses and their overlap scores" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Hanzile – Guess the daily Chinese character" />
+    <meta name="twitter:description" content="Guess the daily Chinese character in 6 tries. Each guess reveals the strokes it shares with the hidden hanzi. Three levels for HSK 1–9 learners, plus hard mode." />
+    <meta name="twitter:image" content="https://hanzile.atone.fun/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Hanzile",
+        "url": "https://hanzile.atone.fun/",
+        "description": "Guess the daily Chinese character in 6 tries. Each guess reveals the strokes it shares with the hidden hanzi. Three levels for HSK 1–9 learners, plus hard mode.",
+        "image": "https://hanzile.atone.fun/og-image.png",
+        "applicationCategory": "GameApplication",
+        "genre": ["Word game", "Puzzle", "Language learning"],
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "inLanguage": ["en", "zh-Hans"],
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
     <script defer src="https://cloud.umami.is/script.js" data-website-id="d4aa7b12-d6f2-440e-85d2-a016801d6a17"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,7 +54,7 @@
   <body>
     <div id="app">
       <header>
-        <img src="/hanzile_full_logo.png" alt="Hanzile" id="logo" />
+        <h1 id="site-title"><img src="/logo.webp" alt="Hanzile" id="logo" width="120" height="120" /></h1>
         <p class="subtitle">Hanzile: Guess the daily Chinese character</p>
         <button id="help-btn" aria-label="How to play">?</button>
         <label id="hard-toggle">
@@ -142,6 +180,50 @@
 
         <div id="draw-area" hidden></div>
       </main>
+
+      <!-- Collapsed card: the text stays in the HTML, so search engines still index it. -->
+      <details id="about">
+        <summary><h2 id="about-title">About Hanzile</h2></summary>
+        <div class="about-body">
+        <p>
+          Hanzile is a free daily Chinese character guessing game, a bit like Wordle for hanzi (汉字).
+          Every day there's a hidden Chinese character, and you have six guesses to find it.
+          Each guess reveals the strokes your character shares with the hidden one, and scores how close the shapes are.
+        </p>
+
+        <h3>Three levels, three puzzles a day</h3>
+        <p>
+          Pick the level that matches the characters you know. Each one has its own daily puzzle, drawn from the
+          <a href="https://github.com/ivankra/hsk30" target="_blank" rel="noopener">HSK 3.0</a> character lists:
+        </p>
+        <ul>
+          <li><strong>Apprentice</strong>: HSK 1–2, about 600 of the most basic characters</li>
+          <li><strong>Scholar</strong>: HSK 3–5, about 900 intermediate characters</li>
+          <li><strong>Master</strong>: HSK 6–9, 1,500 advanced characters</li>
+        </ul>
+        <p>
+          You can guess any character, even one from outside your level, to get a better hint.
+          When the game ends you see the answer's pinyin and meaning, so every round teaches you a character.
+        </p>
+
+        <h3>Hard mode</h3>
+        <p>
+          In hard mode each guess only reveals one quarter of the board, and the score only compares that quarter.
+        </p>
+
+        <h3>Type or draw</h3>
+        <p>
+          Type characters with your pinyin keyboard, or draw them by hand on the board and pick from the recognized
+          characters. Drawing is handy for characters you can write but can't pronounce.
+        </p>
+
+        <h3>Who it's for</h3>
+        <p>
+          Hanzile is made for Mandarin learners practising HSK characters, and for anyone who reads Chinese and
+          enjoys a quick daily puzzle. A new set of puzzles starts every day at midnight, your local time.
+        </p>
+        </div>
+      </details>
 
       <footer id="footer">
         <div id="footer-kofi"></div>
